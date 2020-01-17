@@ -22,16 +22,20 @@ def main(dataset):
         return model
 
     transform_aug, transform_normal, transform_val = get_data_augment(dataset)
+    if args.autoaugment:
+        transform_1, transform_2 = transform_aug, transform_normal
+    else:
+        transform_1, transform_2 = transform_normal, transform_normal
     if dataset == 'cifar10':
         train_labeled_set, train_unlabeled_set, train_unlabeled_set2,val_set, test_set = get_cifar10('./data', args.n_labeled, args.val_size,
-                                                                                    transform_normal=transform_normal,
-                                                                                    transform_aug=transform_aug,
+                                                                                    transform_1=transform_1,
+                                                                                    transform_2=transform_2,
                                                                                     transform_val=transform_val)
     if dataset == 'svhn':
         train_labeled_set, train_unlabeled_set, train_unlabeled_set2, val_set, test_set = get_svhn('./data',
                                                                                                       args.n_labeled,
-                                                                                                      transform_normal=transform_normal,
-                                                                                                      transform_aug=transform_aug,
+                                                                                                      transform_1=transform_1,
+                                                                                                      transform_2=transform_2,
                                                                                                       transform_val=transform_val)
     train_labeled_loader = data.DataLoader(train_labeled_set, batch_size=args.batch_size, shuffle=True, num_workers=0,
                                           drop_last=True)

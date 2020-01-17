@@ -7,7 +7,7 @@ done
 # 500 250
 for sup_size in  500 250;
 do
-    python train.py --dataset=cifar10 --epochs=150 --warmup-step=15 --optimizer='sgd' --consistency-weight=6.0 --lr=0.03 --weight-decay=0.0007 --scheduler=exp --n-labeled=${sup_size} --gpu=1 --batch-size=16 --unsup-ratio=20
+    python train.py --dataset=cifar10 --epochs=150 --warmup-step=15 --optimizer='sgd' --consistency-weight=6.0 --lr=0.03 --weight-decay=0.0007 --scheduler=log --n-labeled=${sup_size} --gpu=1 --batch-size=16 --unsup-ratio=20
 
     $@
 done

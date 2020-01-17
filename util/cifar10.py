@@ -16,14 +16,14 @@ class TransformTwice:
 
 
 def get_cifar10(root, n_labeled, val_size=-1,
-                transform_normal=None, transform_aug=None, transform_val=None,
+                transform_1=None, transform_2=None, transform_val=None,
                 download=True):
     base_dataset = torchvision.datasets.CIFAR10(root, train=True, download=download)
     train_labeled_idxs, train_unlabeled_idxs, val_idxs = train_val_split(base_dataset.targets, n_labeled, val_size)
 
-    train_labeled_dataset = CIFAR10_labeled(root, train_labeled_idxs, train=True, transform=transform_normal)
+    train_labeled_dataset = CIFAR10_labeled(root, train_labeled_idxs, train=True, transform=transform_2)
     train_unlabeled_dataset = CIFAR10_unlabeled(root, train_unlabeled_idxs, train=True,
-                                                transform=TransformTwice(transform_aug, transform_normal))
+                                                transform=TransformTwice(transform_1, transform_2))
     train_unlabeled_dataset2 = CIFAR10_unlabeled(root, train_unlabeled_idxs, train=True,
                                                  transform=transform_val)
     if val_size > 0:

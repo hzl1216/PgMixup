@@ -49,7 +49,7 @@ def create_parser():
     parser.add_argument('--alpha', default=0.75, type=float)
     parser.add_argument('--mixup', default=True, type=str2bool,
                         help='use mixup', metavar='BOOL')
-    parser.add_argument('--gpu', default='2', type=str,
+    parser.add_argument('--gpu', default='0', type=str,
                 help='id(s) for CUDA_VISIBLE_DEVICES')
     parser.add_argument('--seed', type=int, default=42, help='manual seed')
     parser.add_argument('--confidence-thresh', default=-1,type=float)
@@ -59,4 +59,5 @@ def create_parser():
     parser.add_argument('--val-size', type=int, default=-1)
     parser.add_argument('--mixup-size', type=int, default=5)
     parser.add_argument('--dataset', type=str, default='cifar10')
+    parser.add_argument('--autoaugment', type=bool, default=True)
     return parser.parse_args()
