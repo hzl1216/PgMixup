@@ -59,5 +59,5 @@ def create_parser():
     parser.add_argument('--val-size', type=int, default=-1)
     parser.add_argument('--mixup-size', type=int, default=5)
     parser.add_argument('--dataset', type=str, default='cifar10')
-    parser.add_argument('--autoaugment', type=bool, default=True)
+    parser.add_argument('--autoaugment', type=str2bool, default=True)
     return parser.parse_args()
