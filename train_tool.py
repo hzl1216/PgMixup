@@ -279,7 +279,11 @@ def semiloss_mixup(outputs_x, targets_x, outputs_u, targets_u, epoch):
         entropy_loss =- args.entropy_cost*  torch.mean(torch.sum(torch.mul(F.softmax(outputs_u,dim=1), F.log_softmax(outputs_u,dim=1)),dim=1))
     else:
         entropy_loss = 0
-    return class_loss + args.consistency_weight * consistency_loss + entropy_loss, class_loss, consistency_loss
+    if args.autoaugment:
+        consistency_weight=args.consistency_weight
+    else:
+        consistency_weight=ramps.linear_rampup(epoch,args.epochs)*args.consistency_weight
+    return class_loss + consistency_weight * consistency_loss + entropy_loss, class_loss, consistency_loss
 
 
 def interleave_offsets(batch, nu):
