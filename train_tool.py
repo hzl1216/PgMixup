@@ -282,6 +282,7 @@ def semiloss_mixup(outputs_x, targets_x, outputs_u, targets_u, epoch):
     if args.autoaugment:
         consistency_weight=args.consistency_weight
     else:
+        consistency_loss = torch.mean((torch.softmax(outputs_u,dim=1)-torch.softmax(targets_u,dim=1))**2)
         consistency_weight=ramps.linear_rampup(epoch,args.epochs)*args.consistency_weight
     return class_loss + consistency_weight * consistency_loss + entropy_loss, class_loss, consistency_loss
 

@@ -1,1 +1,2 @@
-python train.py --dataset=cifar10 --optimizer='sgd' --warmup-step=20 --lr=0.03 --weight-decay=0.0005 --epochs=400 --gpu=2 --autoaugment=0 --consistency-weight=10
+python train.py --dataset=cifar10 --optimizer='sgd' --warmup-step=20 --lr=0.03 --weight-decay=0.0005 --epochs=400 --gpu=0 --autoaugment=0 --consistency-weight=100
+
