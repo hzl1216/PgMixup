@@ -244,10 +244,9 @@ class WarmupCosineSchedule(LambdaLR):
 def mixup(all_inputs, all_targets, batch_size, model,epoch):
     l = np.random.beta(args.alpha, args.alpha)
 
-    if args.unsup_ratio >=3:
-        length = get_unsup_size(epoch)
-        all_inputs = all_inputs[:args.batch_size+length]
-        all_targets = all_targets[:args.batch_size+length]
+    length = get_unsup_size(epoch)
+    all_inputs = all_inputs[:args.batch_size+length]
+    all_targets = all_targets[:args.batch_size+length]
     idx = torch.randperm(all_inputs.size(0))
     input_a, input_b = all_inputs[idx], all_inputs[idx][idx]
     target_a, target_b = all_targets[idx], all_targets[idx][idx]
@@ -282,9 +281,9 @@ def semiloss_mixup(outputs_x, targets_x, outputs_u, targets_u, epoch):
     if args.autoaugment:
         consistency_weight=args.consistency_weight
     else:
-        consistency_loss = torch.mean((torch.softmax(outputs_u,dim=1)-torch.softmax(targets_u,dim=1))**2)
-        consistency_weight=ramps.linear_rampup(epoch,args.epochs)*args.consistency_weight
-    return class_loss + consistency_weight * consistency_loss + entropy_loss, class_loss, consistency_loss
+        consistency_loss = torch.mean((torch.softmax(targets_u,dim=1)-probs_u)**2)
+        consistency_weight = ramps.linear_rampup(epoch,args.epochs)*args.consistency_weight
+    return class_loss + args.consistency_weight * consistency_loss + entropy_loss, class_loss, consistency_loss
 
 
 def interleave_offsets(batch, nu):
@@ -342,7 +341,5 @@ def scheduler(epoch,totals=None,start=0.0,end=1.0):
     return coeff * (end - start) +start
 
 def get_unsup_size(epoch):
-    if args.mixup_size > args.unsup_ratio:
-        args.mixup_size = args.unsup_ratio
-    size = int(args.mixup_size*args.batch_size*scheduler(epoch))
+    size = int(min(args.mixup_size,args.unsup_ratio)*args.batch_size*scheduler(epoch))
     return size

@@ -32,11 +32,7 @@ def main(dataset):
                                                                                     transform_2=transform_2,
                                                                                     transform_val=transform_val)
     if dataset == 'svhn':
-        train_labeled_set, train_unlabeled_set, train_unlabeled_set2, val_set, test_set = get_svhn('./data',
-                                                                                                      args.n_labeled,
-                                                                                                      transform_1=transform_1,
-                                                                                                      transform_2=transform_2,
-                                                                                                      transform_val=transform_val)
+        train_labeled_set, train_unlabeled_set, train_unlabeled_set2, val_set, test_set = get_svhn('./data', args.n_labeled, transform_1=transform_1, transform_2=transform_2, transform_val=transform_val)
     train_labeled_loader = data.DataLoader(train_labeled_set, batch_size=args.batch_size, shuffle=True, num_workers=0,
                                           drop_last=True)
     train_unlabeled_loader = data.DataLoader(train_unlabeled_set, batch_size=args.batch_size*args.unsup_ratio, shuffle=True,
