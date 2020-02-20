@@ -125,6 +125,10 @@ def main(dataset):
             }, 'checkpoint_path', epoch + 1)
 
 if __name__ == '__main__':
+    dirs = [ 'result','data','checkpoint_path']
+    for path in dirs:
+        if os.path.exists(path) is False:
+            os.makedirs(path) 
     args = create_parser()
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     if args.seed is None:
