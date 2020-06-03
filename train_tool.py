@@ -30,7 +30,7 @@ def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model,op
 
     # switch to train mode
     model.train()
-
+    ema_model.train()
     end = time.time()
     for i in range(args.epoch_iteration):
         try:
