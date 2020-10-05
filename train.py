@@ -49,7 +49,7 @@ def main(dataset):
 
     criterion = nn.CrossEntropyLoss().cuda()
     if args.optimizer == 'Adam':
-        optimizer = optim.Adam(model.parameters(), lr=args.lr)
+        optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     else:
         optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=0.9, weight_decay=args.weight_decay, nesterov=True)
     ema_optimizer = WeightEMA(model, ema_model, tmp_model, alpha=args.ema_decay)
