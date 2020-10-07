@@ -246,8 +246,8 @@ def mixup(all_inputs, all_targets, model, epoch):
     all_inputs = all_inputs[:args.batch_size+length]
     all_targets = all_targets[:args.batch_size+length]
     idx = torch.randperm(all_inputs.size(0))
-    input_a, input_b = all_inputs, all_inputs[idx]
-    target_a, target_b = all_targets, all_targets[idx]
+    input_a, input_b = all_inputs[idx], all_inputs[idx][idx]
+    target_a, target_b = all_targets[idx], all_targets[idx][idx]
 
     mixed_input = l * input_a + (1 - l) * input_b
     mixed_target = l * target_a + (1 - l) * target_b
