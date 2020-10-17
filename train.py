@@ -132,8 +132,9 @@ if __name__ == '__main__':
     args = create_parser()
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     if args.seed is None:
-        args.seed = random.randint(1, 10000)
         np.random.seed(args.seed)
+        torch.manual_seed(args.seed)
+        torch.cuda.manual_seed_all(args.seed)
     set_args(args)
     main(args.dataset)
 
