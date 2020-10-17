@@ -62,7 +62,7 @@ def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model,op
         targets_u = targets_u.detach()
         if args.mixup:
             targets_x = targets_x_onehot.cuda(non_blocking=True)
-            loss_mask = torch.max(targets_u, dim=1)[0].gt(args.confidence_thresh).float().detach()
+            loss_mask = torch.max(targets_u, dim=1)[0].gt(args.confidence_thresh)
             all_inputs = torch.cat([inputs_x,  inputs_u2[loss_mask]], dim=0)
             all_targets = torch.cat([targets_x,  targets_u[loss_mask]], dim=0)
             outputs, targets = mixup(all_inputs, all_targets, batch_size, model,epoch)
