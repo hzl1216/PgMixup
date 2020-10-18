@@ -59,10 +59,12 @@ def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model,op
             targets_u = (torch.softmax(outputs_u1, dim=1) + torch.softmax(outputs_u2, dim=1)) / 2
         else:
             targets_u = torch.FloatTensor(all_labels[unlabel_index,:]).cuda()
+        targets_u = sharpen(targets_u)
         targets_u = targets_u.detach()
         if args.mixup:
             targets_x = targets_x_onehot.cuda(non_blocking=True)
             loss_mask = torch.max(targets_u, dim=1)[0].gt(args.confidence_thresh)
+            print(inputs_u2[loss_mask].shape)
             all_inputs = torch.cat([inputs_x,  inputs_u2[loss_mask]], dim=0)
             all_targets = torch.cat([targets_x,  targets_u[loss_mask]], dim=0)
             outputs, targets = mixup(all_inputs, all_targets, batch_size, model,epoch)
@@ -230,7 +232,10 @@ class WarmupCosineSchedule(LambdaLR):
         decayed = (1 - self.alpha) * cosine_decay + self.alpha
         return decayed
     
-
+def sharpen(outputs):
+    outputs = outputs ** 2
+    outputs = outputs / outputs.sum(dim=1, keepdim=True)
+    return outputs
 
 def mixup(all_inputs, all_targets, batch_size, model,epoch):
     l = np.random.beta(args.alpha, args.alpha)
