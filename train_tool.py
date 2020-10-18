@@ -59,22 +59,21 @@ def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model,op
             targets_u = (torch.softmax(outputs_u1, dim=1) + torch.softmax(outputs_u2, dim=1)) / 2
         else:
             targets_u = torch.FloatTensor(all_labels[unlabel_index,:]).cuda()
-        targets_u = sharpen(targets_u)
         targets_u = targets_u.detach()
         if args.mixup:
             targets_x = targets_x_onehot.cuda(non_blocking=True)
-            loss_mask = torch.max(targets_u, dim=1)[0].gt(args.confidence_thresh)
+            loss_mask = torch.max(targets_u, dim=1)[0].gt(args.confidence_thresh).detach()
             print(inputs_u2[loss_mask].shape)
             all_inputs = torch.cat([inputs_x,  inputs_u2[loss_mask]], dim=0)
             all_targets = torch.cat([targets_x,  targets_u[loss_mask]], dim=0)
-            outputs, targets = mixup(all_inputs, all_targets, batch_size, model,epoch)
+            outputs, targets = mixup(all_inputs, all_targets, batch_size, model, epoch)
 
-            loss, class_loss, consistency_loss = semiloss_mixup(outputs, targets,outputs_u1,outputs_u2.detach(),epoch + i / args.epoch_iteration)
+            loss, class_loss, consistency_loss = semiloss_mixup(outputs, targets, outputs_u1,outputs_u2.detach(), epoch + i / args.epoch_iteration)
         else:
             targets_x = targets_x_onehot.cuda(non_blocking=True)
             outputs_x = model(inputs_x)
             outputs_u1 = model(inputs_u1)
-            loss, class_loss, consistency_loss = semiloss(outputs_x, targets_x, outputs_u1, outputs_u2.detach(),epoch + i / args.epoch_iteration)
+            loss, class_loss, consistency_loss = semiloss(outputs_x, targets_x, outputs_u1, outputs_u2.detach(), epoch + i / args.epoch_iteration)
         meters.update('loss', loss.item())
         meters.update('class_loss', class_loss.item())
         meters.update('cons_loss', consistency_loss.item())
@@ -260,7 +259,6 @@ def semiloss(outputs_x, targets_x, outputs_u, targets_u,epoch):
 
 
 def semiloss_mixup(outputs_x, targets_x, outputs_u, targets_u, epoch):
-    probs_u = torch.softmax(outputs_u, dim=1)
     class_loss = -torch.mean(torch.sum(F.log_softmax(outputs_x, dim=1) * targets_x, dim=1))
     if args.confidence_thresh > 0:
         loss_mask = torch.max(targets_u,dim=1)[0].gt(args.confidence_thresh).float().detach()
