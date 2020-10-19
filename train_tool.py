@@ -59,11 +59,11 @@ def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model,op
             targets_u = (torch.softmax(outputs_u1, dim=1) + torch.softmax(outputs_u2, dim=1)) / 2
         else:
             targets_u = torch.FloatTensor(all_labels[unlabel_index,:]).cuda()
+        targets_u = sharpen(targets_u)
         targets_u = targets_u.detach()
         if args.mixup:
             targets_x = targets_x_onehot.cuda(non_blocking=True)
             loss_mask = torch.max(targets_u, dim=1)[0].gt(args.confidence_thresh).detach()
-            print(inputs_u2[loss_mask].shape)
             all_inputs = torch.cat([inputs_x,  inputs_u2[loss_mask]], dim=0)
             all_targets = torch.cat([targets_x,  targets_u[loss_mask]], dim=0)
             outputs, targets = mixup(all_inputs, all_targets, batch_size, model, epoch)
@@ -238,7 +238,7 @@ def sharpen(outputs):
 
 def mixup(all_inputs, all_targets, batch_size, model,epoch):
     l = np.random.beta(args.alpha, args.alpha)
-
+    print(all_inputs.size(0))
     idx = torch.randperm(all_inputs.size(0))
     input_a, input_b = all_inputs[idx], all_inputs[idx][idx]
     target_a, target_b = all_targets[idx], all_targets[idx][idx]
@@ -260,11 +260,7 @@ def semiloss(outputs_x, targets_x, outputs_u, targets_u,epoch):
 
 def semiloss_mixup(outputs_x, targets_x, outputs_u, targets_u, epoch):
     class_loss = -torch.mean(torch.sum(F.log_softmax(outputs_x, dim=1) * targets_x, dim=1))
-    if args.confidence_thresh > 0:
-        loss_mask = torch.max(targets_u,dim=1)[0].gt(args.confidence_thresh).float().detach()
-        consistency_loss = torch.mean(torch.sum(F.softmax(targets_u,1) * (F.log_softmax(targets_u, 1) - F.log_softmax(outputs_u, dim=1)), 1)*loss_mask)
-    else:
-        consistency_loss = torch.mean(torch.sum(F.softmax(targets_u,1) * (F.log_softmax(targets_u, 1) - F.log_softmax(outputs_u, dim=1)), 1))
+    consistency_loss = torch.mean(torch.sum(F.softmax(targets_u,1) * (F.log_softmax(targets_u, 1) - F.log_softmax(outputs_u, dim=1)), 1))
 
     entropy_loss =- args.entropy_cost*  torch.mean(torch.sum(torch.mul(F.softmax(outputs_u,dim=1), F.log_softmax(outputs_u,dim=1)),dim=1))
 
