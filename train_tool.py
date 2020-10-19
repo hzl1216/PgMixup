@@ -63,9 +63,8 @@ def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model,op
         targets_u = targets_u.detach()
         if args.mixup:
             targets_x = targets_x_onehot.cuda(non_blocking=True)
-            loss_mask = torch.max(targets_u, dim=1)[0].gt(args.confidence_thresh).detach()
-            all_inputs = torch.cat([inputs_x,  inputs_u2[loss_mask]], dim=0)
-            all_targets = torch.cat([targets_x,  targets_u[loss_mask]], dim=0)
+            all_inputs = torch.cat([inputs_x,  inputs_u2], dim=0)
+            all_targets = torch.cat([targets_x,  targets_u], dim=0)
             outputs, targets = mixup(all_inputs, all_targets, batch_size, model, epoch)
 
             loss, class_loss, consistency_loss = semiloss_mixup(outputs, targets, outputs_u1,outputs_u2.detach(), epoch + i / args.epoch_iteration)
@@ -237,6 +236,12 @@ def sharpen(outputs):
     return outputs
 
 def mixup(all_inputs, all_targets, batch_size, model,epoch):
+    length = get_unsup_size(epoch)
+    all_inputs = all_inputs[:args.batch_size + length]
+    all_targets = all_targets[:args.batch_size + length]
+    loss_mask = torch.max(all_targets, dim=1)[0].gt(args.confidence_thresh).detach()
+    all_inputs = all_inputs[loss_mask]
+    all_targets = all_targets[loss_mask]
     l = np.random.beta(args.alpha, args.alpha)
     print(all_inputs.size(0))
     idx = torch.randperm(all_inputs.size(0))
@@ -260,7 +265,11 @@ def semiloss(outputs_x, targets_x, outputs_u, targets_u,epoch):
 
 def semiloss_mixup(outputs_x, targets_x, outputs_u, targets_u, epoch):
     class_loss = -torch.mean(torch.sum(F.log_softmax(outputs_x, dim=1) * targets_x, dim=1))
-    consistency_loss = torch.mean(torch.sum(F.softmax(targets_u,1) * (F.log_softmax(targets_u, 1) - F.log_softmax(outputs_u, dim=1)), 1))
+    if args.confidence_thresh > 0:
+        loss_mask = torch.max(targets_u,dim=1)[0].gt(args.confidence_thresh).float().detach()
+        consistency_loss = torch.mean(torch.sum(F.softmax(targets_u,1) * (F.log_softmax(targets_u, 1) - F.log_softmax(outputs_u, dim=1)), 1)*loss_mask)
+    else:
+        consistency_loss = torch.mean(torch.sum(F.softmax(targets_u,1) * (F.log_softmax(targets_u, 1) - F.log_softmax(outputs_u, dim=1)), 1))
 
     entropy_loss =- args.entropy_cost*  torch.mean(torch.sum(torch.mul(F.softmax(outputs_u,dim=1), F.log_softmax(outputs_u,dim=1)),dim=1))
 
@@ -307,4 +316,20 @@ def get_u_label(model, loader,all_labels):
 
     return all_labels
 
+def scheduler(epoch,totals=None,start=0.0,end=1.0):
+    if totals is None:
+        totals = args.epochs
+    step_ratio = epoch/totals
+    if args.scheduler == 'linear':
+        coeff = step_ratio
+    elif args.scheduler == 'exp':
+        coeff = np.exp((step_ratio - 1) * 5)
+    elif args.scheduler == 'log':
+        coeff = 1 - np.exp((-step_ratio) * 5)
+    else:
+        return 1.0
+    return coeff * (end - start) +start
 
+def get_unsup_size(epoch):
+    size = int(args.unsup_ratio*args.batch_size*scheduler(epoch))
+    return size
