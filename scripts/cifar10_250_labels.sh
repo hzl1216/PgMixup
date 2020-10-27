@@ -1,1 +1,1 @@
-python train.py --dataset=cifar10 --epochs=150 --warmup-step=15 --optimizer='sgd' --consistency-weight=5.0 --lr=0.03 --weight-decay=0.0007 --scheduler=log --n-labeled=250 --gpu=2 --batch-size=16 --unsup-ratio=20 --ema-stage=20
+python train.py --dataset=cifar10 --epochs=150 --warmup-step=15 --optimizer='sgd' --consistency-weight=6.0 --lr=0.03 --weight-decay=0.0007 --scheduler=log --n-labeled=250 --gpu=2 --batch-size=16 --unsup-ratio=10

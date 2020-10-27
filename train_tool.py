@@ -240,9 +240,11 @@ def mixup(all_inputs, all_targets, batch_size, model,epoch):
     length = get_unsup_size(epoch)
     all_inputs = all_inputs[:args.batch_size + length]
     all_targets = all_targets[:args.batch_size + length]
+    '''
     loss_mask = torch.max(all_targets, dim=1)[0].gt(args.confidence_thresh).detach()
     all_inputs = all_inputs[loss_mask]
     all_targets = all_targets[loss_mask]
+    '''
     l = np.random.beta(args.alpha, args.alpha)
     idx = torch.randperm(all_inputs.size(0))
     input_a, input_b = all_inputs[idx], all_inputs[idx][idx]
@@ -319,7 +321,7 @@ def get_u_label(model, loader,all_labels):
 
             # compute output
             outputs = model(inputs)
-            targets = torch.argmax(outputs,dim=1)
+            targets = torch.argmax(outputs,dim=1).cpu()
             all_labels[index] = torch.zeros(targets.size(0), 10).scatter_(1, targets.view(-1, 1), 1)
 
     return all_labels
