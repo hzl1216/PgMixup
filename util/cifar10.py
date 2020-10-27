@@ -21,7 +21,7 @@ def get_cifar10(root, n_labeled, val_size=-1,
     base_dataset = torchvision.datasets.CIFAR10(root, train=True, download=download)
     train_labeled_idxs, train_unlabeled_idxs, val_idxs = train_val_split(base_dataset.targets, n_labeled, val_size)
 
-    train_labeled_dataset = CIFAR10_labeled(root, train_labeled_idxs, train=True, transform=transform_2)
+    train_labeled_dataset = CIFAR10_labeled(root, train_labeled_idxs, train=True, transform=TransformTwice(transform_1, transform_2))
     train_unlabeled_dataset = CIFAR10_unlabeled(root, train_unlabeled_idxs, train=True,
                                                 transform=TransformTwice(transform_1, transform_2))
     train_unlabeled_dataset2 = CIFAR10_unlabeled(root, train_unlabeled_idxs, train=True,
