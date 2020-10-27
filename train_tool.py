@@ -278,7 +278,7 @@ def semiloss_mixup(outputs_x,targets_x, class_criterion,outputs, targets, output
 
     if args.confidence_thresh > 0:
         loss_mask = torch.max(targets_u,dim=1)[0].gt(args.confidence_thresh).float().detach()
-        consistency_loss = -torch.mean((torch.sum(F.log_softmax(outputs, dim=1) * targets, dim=1)*loss_mask))
+        consistency_loss = -torch.mean((torch.sum(F.log_softmax(outputs_u, dim=1) * targets_u, dim=1)*loss_mask))
   #  consistency_loss = torch.mean(torch.sum(F.softmax(targets_u,1) * (F.log_softmax(targets_u, 1) - F.log_softmax(outputs_u, dim=1)), 1))
 
     entropy_loss =- args.entropy_cost*  torch.mean(torch.sum(torch.mul(F.softmax(outputs_u,dim=1), F.log_softmax(outputs_u,dim=1)),dim=1))
