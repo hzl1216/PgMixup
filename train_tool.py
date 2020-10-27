@@ -69,7 +69,7 @@ def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model,op
             all_inputs = torch.cat([inputs_x2,  inputs_u2], dim=0)
             all_targets = torch.cat([targets_x_onehot,  targets_u], dim=0)
             outputs, targets = mixup(all_inputs, all_targets, batch_size, model, epoch)
-            outputs_x = model(inputs_x2)
+            outputs_x = model(inputs_x1)
             loss, class_loss, consistency_loss = semiloss_mixup(outputs_x,targets_x, class_criterion, outputs, targets, outputs_u1,outputs_u2.detach(), epoch + i / args.epoch_iteration)
         else:
             targets_x = targets_x_onehot.cuda(non_blocking=True)
