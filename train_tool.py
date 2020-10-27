@@ -36,7 +36,7 @@ def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model,op
             (inputs_x1, inputs_x2), targets_x, label_index = labeled_train_iter.next()
         except:
             labeled_train_iter = iter(train_labeled_loader)
-            (inputs_x1, inputs_x2), label_index = labeled_train_iter.next()
+            (inputs_x1, inputs_x2),targets_x, label_index = labeled_train_iter.next()
 
         try:
             (inputs_u1, inputs_u2), _, unlabel_index = unlabeled_train_iter.next()
