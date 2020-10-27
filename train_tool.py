@@ -51,8 +51,10 @@ def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model,op
         inputs_u1 = inputs_u1.cuda()
         inputs_u2 = inputs_u2.cuda()
 
+
         batch_size = inputs_x1.size(0)
         targets_x_onehot = torch.zeros(batch_size, 10).scatter_(1, targets_x.view(-1, 1), 1).cuda(non_blocking=True)
+        targets_x = targets_x.cuda()
 
         outputs_u1 = model(inputs_u1)
         outputs_u2 = model(inputs_u2)
