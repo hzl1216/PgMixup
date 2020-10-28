@@ -54,23 +54,22 @@ def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model,op
 
         batch_size = inputs_x1.size(0)
         targets_x_onehot = torch.zeros(batch_size, 10).scatter_(1, targets_x.view(-1, 1), 1).cuda(non_blocking=True)
-        targets_x = targets_x.cuda()
+        targets_x = targets_x.cuda(non_blocking=True)
 
         outputs_u1 = model(inputs_u1)
         outputs_u2 = model(inputs_u2)
         if epoch <=args.ema_stage:
             targets_u = (torch.softmax(outputs_u1, dim=1) + torch.softmax(outputs_u2, dim=1)) / 2
-            targets_u = sharpen(targets_u)
         else:
             targets_u = torch.FloatTensor(all_labels[unlabel_index,:]).cuda()
-#        targets_u = sharpen(targets_u)
+        targets_u = sharpen(targets_u)
         targets_u = targets_u.detach()
         if args.mixup:
             all_inputs = torch.cat([inputs_x2,  inputs_u2], dim=0)
             all_targets = torch.cat([targets_x_onehot,  targets_u], dim=0)
             outputs, targets = mixup(all_inputs, all_targets, batch_size, model, epoch)
             outputs_x = model(inputs_x1)
-            loss, class_loss, consistency_loss = semiloss_mixup(outputs_x,targets_x, class_criterion, outputs, targets, outputs_u1,outputs_u2.detach(), epoch + i / args.epoch_iteration)
+            loss, class_loss, consistency_loss = semiloss_mixup(outputs_x,targets_x_onehot, outputs, targets, outputs_u1,outputs_u2.detach(), epoch + i / args.epoch_iteration)
         else:
             targets_x = targets_x_onehot.cuda(non_blocking=True)
             outputs_x = model(inputs_x2)
@@ -267,23 +266,22 @@ def mixup(all_inputs, all_targets, batch_size, model,epoch):
 
 def semiloss(outputs_x, targets_x, outputs_u, targets_u,epoch):
     class_loss = -torch.mean(torch.sum(F.log_softmax(outputs_x, dim=1) * targets_x, dim=1))
+
     consistency_loss = torch.mean(torch.sum(F.softmax(targets_u,1) * (F.log_softmax(targets_u, 1) - F.log_softmax(outputs_u, dim=1)), 1))
 
     return class_loss + args.consistency_weight*consistency_loss, class_loss, consistency_loss
 
 
-def semiloss_mixup(outputs_x,targets_x, class_criterion,outputs, targets, outputs_u, targets_u, epoch):
-    class_loss = class_criterion(outputs_x,targets_x)
+def semiloss_mixup(outputs_x,targets_x, outputs, targets, outputs_u, targets_u, epoch):
+    class_loss = - torch.mean(torch.sum(F.log_softmax(outputs_x, dim=1) * targets_x, dim=1))
     class_loss += -torch.mean(torch.sum(F.log_softmax(outputs, dim=1) * targets, dim=1))
-
     if args.confidence_thresh > 0:
         loss_mask = torch.max(targets_u,dim=1)[0].gt(args.confidence_thresh).float().detach()
-        consistency_loss = -torch.mean((torch.sum(F.log_softmax(outputs_u, dim=1) * targets_u, dim=1)*loss_mask))
-  #  consistency_loss = torch.mean(torch.sum(F.softmax(targets_u,1) * (F.log_softmax(targets_u, 1) - F.log_softmax(outputs_u, dim=1)), 1))
+        consistency_loss = torch.mean(torch.sum(F.softmax(targets_u,1) * (F.log_softmax(targets_u, 1) - F.log_softmax(outputs_u, dim=1)), 1)*loss_mask)
+#    consistency_loss = torch.mean(torch.sum(F.softmax(targets_u,1) * (F.log_softmax(targets_u, 1) - F.log_softmax(outputs_u, dim=1)), 1))
 
     entropy_loss =- args.entropy_cost*  torch.mean(torch.sum(torch.mul(F.softmax(outputs_u,dim=1), F.log_softmax(outputs_u,dim=1)),dim=1))
-
-    return class_loss + args.consistency_weight * consistency_loss + entropy_loss, class_loss, consistency_loss
+    return class_loss/2 + args.consistency_weight * consistency_loss + entropy_loss, class_loss/2, consistency_loss
 
 
 def interleave_offsets(batch, nu):
@@ -322,8 +320,9 @@ def get_u_label(model, loader,all_labels):
 
             # compute output
             outputs = model(inputs)
-            targets = torch.argmax(outputs,dim=1).cpu()
-            all_labels[index] = torch.zeros(targets.size(0), 10).scatter_(1, targets.view(-1, 1), 1)
+            all_labels[index] = torch.softmax(outputs,dim=1).cpu().numpy()
+#            targets = torch.argmax(outputs,dim=1).cpu()
+#            all_labels[index] = torch.zeros(targets.size(0), 10).scatter_(1, targets.view(-1, 1), 1)
 
     return all_labels
 
