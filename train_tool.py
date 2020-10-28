@@ -50,31 +50,33 @@ def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model,op
         inputs_x2 = inputs_x2.cuda()
         inputs_u1 = inputs_u1.cuda()
         inputs_u2 = inputs_u2.cuda()
-
-
         batch_size = inputs_x1.size(0)
         targets_x_onehot = torch.zeros(batch_size, 10).scatter_(1, targets_x.view(-1, 1), 1).cuda(non_blocking=True)
-        targets_x = targets_x.cuda(non_blocking=True)
 
-        outputs_u1 = model(inputs_u1)
-        outputs_u2 = model(inputs_u2)
-        if epoch <=args.ema_stage:
-            targets_u = (torch.softmax(outputs_u1, dim=1) + torch.softmax(outputs_u2, dim=1)) / 2
-        else:
-            targets_u = torch.FloatTensor(all_labels[unlabel_index,:]).cuda()
+        outputs_u2 = ema_model(inputs_u2)
+        targets_u =  torch.softmax(outputs_u2, dim=1)
         targets_u = sharpen(targets_u)
         targets_u = targets_u.detach()
+        all_inputs = torch.cat([inputs_x1, inputs_u1, inputs_u2], dim=0)
         if args.mixup:
-            all_inputs = torch.cat([inputs_x2,  inputs_u2], dim=0)
-            all_targets = torch.cat([targets_x_onehot,  targets_u], dim=0)
-            outputs, targets = mixup(all_inputs, all_targets, batch_size, model, epoch)
-            outputs_x = model(inputs_x1)
-            loss, class_loss, consistency_loss = semiloss_mixup(outputs_x,targets_x_onehot, outputs, targets, outputs_u1,outputs_u2.detach(), epoch + i / args.epoch_iteration)
-        else:
-            targets_x = targets_x_onehot.cuda(non_blocking=True)
-            outputs_x = model(inputs_x2)
-            outputs_u1 = model(inputs_u1)
-            loss, class_loss, consistency_loss = semiloss(outputs_x, targets_x, outputs_u1, outputs_u2.detach(), epoch + i / args.epoch_iteration)
+            length = get_unsup_size(epoch)
+            mixup_inputs = torch.cat([inputs_x2,  inputs_u2], dim=0)[:args.batch_size + length]
+            mixup_targets = torch.cat([targets_x_onehot, targets_u], dim=0)[:args.batch_size + length]
+            l = np.random.beta(args.alpha, args.alpha)
+            idx = torch.randperm(mixup_inputs.size(0))
+            input_a, input_b = mixup_inputs, mixup_inputs[idx]
+            target_a, target_b = mixup_targets, mixup_targets[idx]
+            mixed_inputs = l * input_a + (1 - l) * input_b
+            mixed_targets = l * target_a + (1 - l) * target_b
+            all_inputs = torch.cat([all_inputs,  mixed_inputs], dim=0)
+        logits = model(all_inputs)
+        outputs_x = logits[:args.batch_size]
+        outputs_u1, outputs_u2 = logits[args.batch_size:args.batch_size+args.batch_size*args.unsup_ratio*2].chunk(2)
+        outputs_mixup = logits[args.batch_size + args.batch_size * args.unsup_ratio * 2:]
+        del logits
+        print(outputs_x.size(0),outputs_u1.size(0),outputs_mixup.size(0))
+        if args.mixup:
+            loss, class_loss, consistency_loss = semiloss_mixup(outputs_x,targets_x_onehot,outputs_mixup,mixed_targets,outputs_u1,outputs_u2.detach(),epoch)
         meters.update('loss', loss.item())
         meters.update('class_loss', class_loss.item())
         meters.update('cons_loss', consistency_loss.item())
