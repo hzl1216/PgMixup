@@ -37,7 +37,7 @@ def accuracy(output, target, topk=(1,)):
 def parameters_string(module):
     lines = [
         "",
-        "List of model parameters:",
+        "List of models parameters:",
         "=========================",
     ]
 

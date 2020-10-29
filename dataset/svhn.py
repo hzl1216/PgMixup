@@ -32,7 +32,7 @@ def get_svhn(root, n_labeled,val_size=-1,
         val_dataset = None
     test_dataset = SVHN_labeled(root, split='test', transform=transform_val, download=True)
 
-    print(f"#Labeled: {len(train_labeled_idxs)} #Unlabeled: {len(train_unlabeled_idxs)} #val: {len(val_idxs)} #test: {len(test_dataset)}")
+    print('#Labeled: %d #Unlabeled: %d #val: %d #test: %d'%(len(train_labeled_idxs),len(train_unlabeled_idxs),len(train_unlabeled_idxs),len(test_dataset)))
     return train_labeled_dataset, train_unlabeled_dataset, train_unlabeled_dataset2, val_dataset, test_dataset
 
 

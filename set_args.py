@@ -39,7 +39,7 @@ def create_parser():
     parser.add_argument('--n-labeled', type=int, default=4000,
                         help='Number of labeled data')
     parser.add_argument('-e', '--evaluate', type=bool,
-                        help='evaluate model on evaluation set')
+                        help='evaluate models on evaluation set')
     parser.add_argument('--num-workers', type=int, default=12,
                         help='Number of workers')
     parser.add_argument('--epoch-iteration', type=int, default=1024,

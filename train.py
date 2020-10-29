@@ -1,18 +1,17 @@
 from train_tool import *
-import torchvision.transforms as transforms
 import torch.backends.cudnn as cudnn
 import torch.optim as optim
 import torch.utils.data as data
-from util.net import WideResNet
-from util.cifar10 import get_cifar10
-from util.svhn import get_svhn
+from models.wideresnet import WideResNet
+from dataset.cifar10 import get_cifar10
+from dataset.svhn import get_svhn
 import os
 from set_args import create_parser
-from util.data_augment import get_data_augment
+from dataset.data_augment import get_data_augment
 def main(dataset):
     print('start train %s '%dataset)
     def create_model(ema=False):
-        print("=> creating {ema}model ".format(
+        print("=> creating {ema}models ".format(
             ema='EMA ' if ema else ''))
         model = WideResNet(num_classes=10)
         model = nn.DataParallel(model).cuda()
@@ -71,7 +70,7 @@ def main(dataset):
         model.load_state_dict(checkpoint['state_dict'])
         ema_model.load_state_dict(checkpoint['ema_state_dict'])
         optimizer.load_state_dict(checkpoint['optimizer'])
-        print("Evaluating the  model:")
+        print("Evaluating the  models:")
         if args.val_size>0:
             val_loss, val_acc = validate(val_loader, model, criterion,args.start_epoch)
         else:
@@ -96,7 +95,7 @@ def main(dataset):
 
         if args.evaluation_epochs and (epoch + 1) % args.evaluation_epochs == 0:
             start_time = time.time()
-            print("Evaluating the  model:")
+            print("Evaluating the  models:")
             if args.val_size>0:
                 val_loss, val_acc = validate(val_loader, model, criterion,epoch)
             else:
@@ -105,7 +104,7 @@ def main(dataset):
             print("--- validation in %s seconds ---" % (time.time() - start_time))
             logger.append([epoch, class_loss, cons_loss, val_loss, val_acc,test_loss, test_acc])
 
-            print("Evaluating the EMA model:")
+            print("Evaluating the EMA models:")
             if args.val_size > 0:
                 ema_val_loss, ema_val_acc = validate(val_loader, ema_model, criterion,epoch)
             else:

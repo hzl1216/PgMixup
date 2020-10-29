@@ -1,11 +1,11 @@
 import time
 import os
 
-from util import ramps
+from ramps import *
 import torch.nn as nn
 import torch
 import logging
-from util.utils import *
+from utils import *
 import math
 from torch.optim.lr_scheduler import LambdaLR
 import torch.nn.functional as F
@@ -175,7 +175,7 @@ class WeightEMA(object):
 
     def step(self, bn=False):
         if bn:
-            # copy batchnorm stats to ema model
+            # copy batchnorm stats to ema models
             for ema_param, tmp_param in zip(self.ema_model.parameters(), self.tmp_model.parameters()):
                 tmp_param.data.copy_(ema_param.data.detach())
 
