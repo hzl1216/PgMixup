@@ -1,6 +1,6 @@
 import argparse
 import logging
-from util.utils import str2bool
+from utils import str2bool
 
 
 def create_parser():
