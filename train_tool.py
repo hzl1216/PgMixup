@@ -1,7 +1,7 @@
 import time
 import os
 
-from ramps import *
+import ramps
 import torch.nn as nn
 import torch
 import logging
@@ -9,7 +9,7 @@ from utils import *
 import math
 from torch.optim.lr_scheduler import LambdaLR
 import torch.nn.functional as F
-from sklearn.metrics import confusion_matrix
+
 
 LOG = logging.getLogger('main')
 args = None
@@ -270,19 +270,16 @@ def semiloss_mixup(outputs_x, targets_x, outputs_u, targets_u, epoch):
     probs_u = torch.softmax(outputs_u, dim=1)
     class_loss = -torch.mean(torch.sum(F.log_softmax(outputs_x, dim=1) * targets_x, dim=1))
     if args.confidence_thresh > 0:
-        loss_mask2 = torch.max(probs_u,dim=1)[0].gt(args.confidence_thresh).float().detach() 
-        consistency_loss = torch.mean(torch.sum(F.softmax(targets_u,1) * (F.log_softmax(targets_u, 1) - F.log_softmax(outputs_u, dim=1)), 1)*loss_mask2)
+        loss_mask = torch.max(probs_u,dim=1)[0].gt(args.confidence_thresh).float().detach()
+        consistency_loss = -torch.sum(F.log_softmax(outputs_u, dim=1) * targets_u, dim=1)
+        #consistency_loss = torch.sum(F.softmax(targets_u, 1) * (F.log_softmax(targets_u, 1) - F.log_softmax(outputs_u, dim=1)),1)
+        consistency_loss = torch.sum(consistency_loss*loss_mask)/torch.max(torch.sum(loss_mask), torch.tensor(1.))
     else:
-        consistency_loss = torch.mean(torch.sum(F.softmax(targets_u,1) * (F.log_softmax(targets_u, 1) - F.log_softmax(outputs_u, dim=1)), 1))
+        consistency_loss = -torch.mean(torch.sum(F.log_softmax(outputs_u, dim=1) * targets_u, dim=1))
     if args.entropy_cost >0:
-        entropy_loss =- args.entropy_cost*  torch.mean(torch.sum(torch.mul(F.softmax(outputs_u,dim=1), F.log_softmax(outputs_u,dim=1)),dim=1))
+        entropy_loss = -args.entropy_cost * torch.mean(torch.sum(torch.mul(F.softmax(outputs_u,dim=1), F.log_softmax(outputs_u,dim=1)),dim=1))
     else:
         entropy_loss = 0
-    if args.autoaugment:
-        consistency_weight=args.consistency_weight
-    else:
-        consistency_loss = torch.mean((torch.softmax(targets_u,dim=1)-probs_u)**2)
-        consistency_weight = ramps.linear_rampup(epoch,args.epochs)*args.consistency_weight
     return class_loss + args.consistency_weight * consistency_loss + entropy_loss, class_loss, consistency_loss
 
 
