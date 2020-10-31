@@ -5,12 +5,12 @@ def get_data_augment(dataset):
         means = (0.4914, 0.4822, 0.4465)
         stds = (0.2471, 0.2435, 0.2616)
         transform_aug = transforms.Compose(
-            [transforms.RandomCrop(32, padding=4),  # fill parameter needs torchvision installed from source
-             transforms.RandomHorizontalFlip(), CIFAR10Policy(),
+            [transforms.Resize(256),
+             CIFAR10Policy(),
              transforms.ToTensor(),
              Cutout(n_holes=1, length=16),  # (https://github.com/uoguelph-mlrg/Cutout/blob/master/util/cutout.py)
              transforms.Normalize(means, stds),
-             ])
+        ])
         transform_normal = transforms.Compose([
             transforms.RandomCrop(32, padding=4),
             transforms.RandomHorizontalFlip(),
