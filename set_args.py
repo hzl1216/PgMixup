@@ -5,16 +5,16 @@ from util.utils import str2bool
 
 def create_parser():
     parser = argparse.ArgumentParser(description='PyTorch cifar10 Training')
-    parser.add_argument('--epochs', default=256, type=int, metavar='N',
+    parser.add_argument('--epochs', default=400, type=int, metavar='N',
                         help='number of total epochs to run')
     parser.add_argument('--start-epoch', default=0, type=int, metavar='N',
                         help='manual epoch number (useful on restarts)')
     parser.add_argument('--batch-size', default=64, type=int,
                         metavar='N', help='labeled-batch size')
-    parser.add_argument('--unsup-ratio', default=5, type=int,
+    parser.add_argument('--unsup-ratio', default=7, type=int,
                         metavar='N', help='The ratio between batch size of unlabeled data and labeled data')
-    parser.add_argument('--lr', '--learning-rate', default=0.002, type=float)
-    parser.add_argument('--weight-decay', '--wd', default=1e-4, type=float,
+    parser.add_argument('--lr', '--learning-rate', default=0.03, type=float)
+    parser.add_argument('--weight-decay', '--wd', default=5e-4, type=float,
                         metavar='W', help='weight decay (default: 1e-4)')
     parser.add_argument('--ema-decay', default=0.999, type=float, metavar='ALPHA',
                         help='ema variable decay rate (default: 0.999)')
@@ -25,7 +25,8 @@ def create_parser():
                         help='consistency loss type to use')
     parser.add_argument('--consistency-rampup', default=5, type=int, metavar='EPOCHS',
                         help='length of the consistency loss ramp-up')
-    parser.add_argument('--entropy-cost', default=0.1, type=float, metavar='WEIGHT')
+    parser.add_argument('--entropy-cost', default=0.0, type=float, metavar='WEIGHT')
+    parser.add_argument('--softmax-temp', default=0.4, type=float, metavar='softmax-temp')
     parser.add_argument('--checkpoint-epochs', default=1, type=int,
                         metavar='EPOCHS', help='checkpoint frequency in epochs, 0 to turn checkpointing off (default: 1)')
     parser.add_argument('--evaluation-epochs', default=1, type=int,
@@ -52,7 +53,7 @@ def create_parser():
     parser.add_argument('--gpu', default='0', type=str,
                 help='id(s) for CUDA_VISIBLE_DEVICES')
     parser.add_argument('--seed', type=int, default=42, help='manual seed')
-    parser.add_argument('--confidence-thresh', default=-1,type=float)
+    parser.add_argument('--confidence-thresh', default=0.8, type=float)
     parser.add_argument('--scheduler', default='linear')
     parser.add_argument('--ema-stage', type=int, default=16)
     parser.add_argument('--optimizer', type=str, default='Adam')
