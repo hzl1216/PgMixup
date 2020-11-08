@@ -1,1 +1,1 @@
-python train.py --dataset=cifar10 --epochs=400 --warmup-step=20 --n-labeled=250 --gpu=1
+python train.py --dataset=cifar10 --epochs=150 --warmup-step=15 --optimizer='sgd' --consistency-weight=6.0 --lr=0.03  --scheduler=log --n-labeled=250 --gpu=1
