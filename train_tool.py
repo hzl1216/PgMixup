@@ -176,19 +176,17 @@ class WeightEMA(object):
         self.alpha = alpha
         self.params = list(model.state_dict().values())
         self.ema_params = list(ema_model.state_dict().values())
-        self.wd = 0.02 * args.lr
-
+        self.wd = args.weight_decay
         for param, ema_param in zip(self.params, self.ema_params):
             param.data.copy_(ema_param.data)
 
     def step(self):
         one_minus_alpha = 1.0 - self.alpha
-        for param, ema_param in zip(self.params, self.ema_params):
-            if ema_param.dtype==torch.float32:
-                ema_param.mul_(self.alpha)
-                ema_param.add_(param * one_minus_alpha)
-                # customized weight decay
-                param.mul_(1 - self.wd)
+        for param, ema_param in zip(self.model.parameters(), self.ema_model.parameters()):
+            ema_param.data.mul_(self.alpha)
+            ema_param.data.add_(param.data.detach() * one_minus_alpha)
+            if args.optimizer == 'Adam':
+                param.data.mul_(1 - self.wd)
 
 def save_checkpoint(name ,state, dirpath, epoch):
     filename = '%s_%d.ckpt' % (name, epoch)
