@@ -52,7 +52,8 @@ def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model,op
 
         if epoch <= args.ema_stage:
             with torch.no_grad():
-                logits_aug, logits_std = model(inputs_aug), model(inputs_std)
+                logits_aug, = model(inputs_aug)
+                logits_std = model(inputs_std)
                 targets_u = (torch.softmax(logits_aug, dim=1) + torch.softmax(logits_std, dim=1)) / 2
         else:
             targets_u = torch.FloatTensor(all_labels[unlabel_index, :]).cuda()
@@ -107,7 +108,7 @@ def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model,op
                 'Class {meters[class_loss]:.4f}\t'
                 'Cons {meters[cons_loss]:.4f}\t'.format(
                     epoch, i, args.epoch_iteration, meters=meters))
-
+    ema_optimizer.step(True)
     return meters.averages()['class_loss/avg'], meters.averages()['cons_loss/avg'], all_labels
 
 
@@ -153,40 +154,48 @@ def validate(val_loader, model, criterion, epoch):
             end = time.time()
 
             # plot progress
-            if batch_idx % args.print_freq == 0:
-                print(
-                    '{batch}/{size}) Data: {data:.3f}s | Batch: {bt:.3f}s | Loss: {loss:.4f} | top1: {top1: .4f} | top5: {top5: .4f}'.format(
-                        batch=batch_idx + 1,
-                        size=len(val_loader),
-                        data=data_time.avg,
-                        bt=batch_time.avg,
-                        loss=losses.avg,
-                        top1=top1.avg,
-                        top5=top5.avg,
-                    ))
-#    conf_matrix = confusion_matrix(all_logits, all_labels)
-#    plot_confusion_matrix(conf_matrix.numpy(), epoch)
+
+        print(
+            'Data: {data:.3f}s | Batch: {bt:.3f}s | Loss: {loss:.4f} | top1: {top1: .4f} | top5: {top5: .4f}'.format(
+                data=data_time.avg,
+                bt=batch_time.avg,
+                loss=losses.avg,
+                top1=top1.avg,
+                top5=top5.avg,
+            ))
+
     return losses.avg, top1.avg
 
 
 class WeightEMA(object):
-    def __init__(self, model, ema_model, alpha=0.999):
+    def __init__(self, model, ema_model, tmp_model=None, alpha=0.999):
         self.model = model
         self.ema_model = ema_model
         self.alpha = alpha
-        self.params = list(model.state_dict().values())
-        self.ema_params = list(ema_model.state_dict().values())
+        if tmp_model is not None:
+            self.tmp_model = tmp_model.cuda()
         self.wd = args.weight_decay
-        for param, ema_param in zip(self.params, self.ema_params):
-            param.data.copy_(ema_param.data)
 
-    def step(self):
-        one_minus_alpha = 1.0 - self.alpha
         for param, ema_param in zip(self.model.parameters(), self.ema_model.parameters()):
-            ema_param.data.mul_(self.alpha)
-            ema_param.data.add_(param.data.detach() * one_minus_alpha)
-            if args.optimizer == 'Adam':
-                param.data.mul_(1 - self.wd)
+            ema_param.data.copy_(param.data)
+
+    def step(self, bn=False):
+        if bn:
+            # copy batchnorm stats to ema model
+            for ema_param, tmp_param in zip(self.ema_model.parameters(), self.tmp_model.parameters()):
+                tmp_param.data.copy_(ema_param.data.detach())
+
+            self.ema_model.load_state_dict(self.model.state_dict())
+
+            for ema_param, tmp_param in zip(self.ema_model.parameters(), self.tmp_model.parameters()):
+                ema_param.data.copy_(tmp_param.data.detach())
+        else:
+            one_minus_alpha = 1.0 - self.alpha
+            for param, ema_param in zip(self.model.parameters(), self.ema_model.parameters()):
+                ema_param.data.mul_(self.alpha)
+                ema_param.data.add_(param.data.detach() * one_minus_alpha)
+                if args.optimizer == 'Adam':
+                    param.data.mul_(1 - self.wd)
 
 def save_checkpoint(name ,state, dirpath, epoch):
     filename = '%s_%d.ckpt' % (name, epoch)

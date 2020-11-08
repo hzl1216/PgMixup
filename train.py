@@ -44,13 +44,13 @@ def main(dataset):
     test_loader = data.DataLoader(test_set, batch_size=args.batch_size*args.unsup_ratio, shuffle=False, num_workers=0)
     model = create_model()
     ema_model = create_model(ema=True)
-
+    tmp_model = create_model(ema=True)
     criterion = nn.CrossEntropyLoss().cuda()
     if args.optimizer == 'Adam':
         optimizer = optim.Adam(model.parameters(), lr=args.lr)
     else:
         optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=0.9, weight_decay=args.weight_decay, nesterov=True)
-    ema_optimizer = WeightEMA(model, ema_model, alpha=args.ema_decay)
+    ema_optimizer = WeightEMA(model, ema_model, tmp_model, alpha=args.ema_decay)
     cudnn.benchmark = True
     if args.warmup_step>0:
         totals = args.epochs*args.epoch_iteration
