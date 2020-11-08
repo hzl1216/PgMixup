@@ -50,6 +50,21 @@ def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model,op
         batch_size = inputs_x.size(0)
         targets_x = torch.zeros(batch_size, 10).scatter_(1, targets_x.view(-1, 1), 1).cuda(non_blocking=True)
 
+        if epoch <= args.ema_stage:
+            with torch.no_grad():
+                logits_aug, logits_std = model(inputs_aug), model(inputs_std)
+                targets_u = (torch.softmax(logits_aug, dim=1) + torch.softmax(logits_std, dim=1)) / 2
+        else:
+            targets_u = torch.FloatTensor(all_labels[unlabel_index, :]).cuda()
+        targets_u = sharpen(targets_u)
+        targets_u = targets_u.detach()
+        with torch.no_grad():
+            # compute guessed labels of unlabel samples
+            logits_aug, logits_std = model(inputs_aug), model(inputs_std)
+            p = (torch.softmax(logits_aug, dim=1) + torch.softmax(logits_std, dim=1)) / 2
+            pt = p ** (1 / args.T)
+            targets_u = pt / pt.sum(dim=1, keepdim=True)
+            targets_u = targets_u.detach()
         targets_u = ema_model(inputs_std)
         if args.softmax_temp > 0:
             targets_u = targets_u / args.softmax_temp
@@ -205,10 +220,9 @@ def get_current_entropy_weight(epoch):
         return 0
 
 
-def softmax_temp(logits):
-    if args.softmax_temp > 0:
-        logits = logits / args.softmax_temp
-    logits = torch.softmax(logits,dim=1)
+def sharpen(logits):
+    logits = logits ** 2
+    logits = logits / logits.sum(dim=1, keepdim=True)
     return logits
 
 
@@ -285,7 +299,7 @@ def get_u_label(model, loader,all_labels):
 
             # compute output
             logits = model(inputs)
-            all_labels[index] = logits.cpu().numpy()
+            all_labels[index] = torch.softmax(outputs,dim=1).cpu().numpy()
 
     return all_labels
 
