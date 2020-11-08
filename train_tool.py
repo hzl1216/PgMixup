@@ -299,7 +299,7 @@ def get_u_label(model, loader,all_labels):
 
             # compute output
             logits = model(inputs)
-            all_labels[index] = torch.softmax(outputs,dim=1).cpu().numpy()
+            all_labels[index] = torch.softmax(logits,dim=1).cpu().numpy()
 
     return all_labels
 
