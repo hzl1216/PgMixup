@@ -15,7 +15,7 @@ def create_parser():
     parser.add_argument('--lr', '--learning-rate', default=0.03, type=float)
     parser.add_argument('--weight-decay', '--wd', default=5e-4, type=float,
                         metavar='W', help='weight decay (default: 1e-4)')
-    parser.add_argument('--ema-decay', default=0.9999, type=float, metavar='ALPHA',
+    parser.add_argument('--ema-decay', default=0.999, type=float, metavar='ALPHA',
                         help='ema variable decay rate (default: 0.999)')
     parser.add_argument('--consistency-weight', default=1.0, type=float, metavar='WEIGHT',
                         help='use consistency loss with given weight (default: None)')
