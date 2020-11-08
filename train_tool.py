@@ -58,18 +58,7 @@ def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model,op
             targets_u = torch.FloatTensor(all_labels[unlabel_index, :]).cuda()
         targets_u = sharpen(targets_u)
         targets_u = targets_u.detach()
-        with torch.no_grad():
-            # compute guessed labels of unlabel samples
-            logits_aug, logits_std = model(inputs_aug), model(inputs_std)
-            p = (torch.softmax(logits_aug, dim=1) + torch.softmax(logits_std, dim=1)) / 2
-            pt = p ** (1 / args.T)
-            targets_u = pt / pt.sum(dim=1, keepdim=True)
-            targets_u = targets_u.detach()
-        targets_u = ema_model(inputs_std)
-        if args.softmax_temp > 0:
-            targets_u = targets_u / args.softmax_temp
-        targets_u = torch.softmax(targets_u, dim=1)
-        targets_u = targets_u.detach()
+
         all_inputs = torch.cat([inputs_aug, inputs_std], dim=0)
         if args.mixup:
             length = get_unsup_size(epoch + i / args.epoch_iteration)
