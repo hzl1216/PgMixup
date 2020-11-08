@@ -104,8 +104,6 @@ def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model,op
                 'Cons {meters[cons_loss]:.4f}\t'.format(
                     epoch, i, args.epoch_iteration, meters=meters))
 
-
-    ema_optimizer.step(bn=True)
     return meters.averages()['class_loss/avg'], meters.averages()['cons_loss/avg'], all_labels
 
 
