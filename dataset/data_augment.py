@@ -1,4 +1,4 @@
-from .autoaugment import CIFAR10Policy,Cutout,SVHNPolicy
+from dataset.autoaugment import CIFAR10Policy,Cutout,SVHNPolicy
 import torchvision.transforms as transforms
 def get_data_augment(dataset):
     if dataset == 'cifar10':
