@@ -52,7 +52,7 @@ def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model,op
 
         if epoch <= args.ema_stage:
             with torch.no_grad():
-                logits_aug, = model(inputs_aug)
+                logits_aug = model(inputs_aug)
                 logits_std = model(inputs_std)
                 targets_u = (torch.softmax(logits_aug, dim=1) + torch.softmax(logits_std, dim=1)) / 2
         else:
