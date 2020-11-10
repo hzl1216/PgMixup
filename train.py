@@ -87,8 +87,7 @@ def main(dataset):
         start_time = time.time()
         # train for one epoch
         class_loss, cons_loss,all_labels = train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model,optimizer, ema_optimizer,all_labels, epoch, scheduler)
-        if epoch >= args.ema_stage:
-            all_labels = get_u_label(ema_model, train_unlabeled_loader2,all_labels)
+        all_labels = get_u_label(ema_model, train_unlabeled_loader2,all_labels)
 
         print("--- training epoch in %s seconds ---" % (time.time() - start_time))
 
