@@ -50,23 +50,18 @@ def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model,op
         batch_size = inputs_x.size(0)
         targets_x = torch.zeros(batch_size, 10).scatter_(1, targets_x.view(-1, 1), 1).cuda(non_blocking=True)
 
-        if epoch <= args.ema_stage:
-            with torch.no_grad():
-                logits_aug = model(inputs_aug)
-                logits_std = model(inputs_std)
-                targets_u = (torch.softmax(logits_aug, dim=1) + torch.softmax(logits_std, dim=1)) / 2
-        else:
-            targets_u = torch.FloatTensor(all_labels[unlabel_index, :]).cuda()
-        targets_u = sharpen(targets_u)
+        targets_u = torch.FloatTensor(all_labels[unlabel_index, :]).cuda()
         targets_u = targets_u.detach()
 
-        all_inputs = torch.cat([inputs_aug, inputs_std], dim=0)
+        all_inputs = torch.cat([inputs_aug], dim=0)
         if args.mixup:
             length = get_unsup_size(epoch + i / args.epoch_iteration)
             input_a = torch.cat([inputs_x, inputs_std[: length]], dim=0)
             target_a = torch.cat([targets_x, targets_u[: length]], dim=0)
+            index_mask = torch.max(target_a, dim=1)[0].gt(args.confidence_thresh)
+            input_a = input_a[index_mask]
+            target_a = target_a[index_mask]
             l = np.random.beta(args.alpha, args.alpha)
-            l = max(l, 1 - l)
             idx = torch.randperm(input_a.size(0))
             input_b = input_a[idx]
             target_b = target_a[idx]
@@ -75,17 +70,11 @@ def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model,op
             del input_a, target_a, input_b, target_b
             all_inputs = torch.cat([all_inputs, mixed_inputs], dim=0)
             all_logits = model(all_inputs)
-            logits_aug, logits_std = all_logits[:args.batch_size * args.unsup_ratio * 2].chunk(2)
-            if args.softmax_temp > 0:
-                logits_std = logits_std / args.softmax_temp
-            logits_mixup = all_logits[args.batch_size * args.unsup_ratio * 2:]
+            logits_aug = all_logits[:args.batch_size * args.unsup_ratio]
+            logits_mixup = all_logits[args.batch_size * args.unsup_ratio :]
             del all_logits
-            loss, class_loss, consistency_loss = semiloss_mixup(logits_mixup, mixed_targets, logits_aug,
-                                                                logits_std.detach())
-        else:
-            logits_x = model(inputs_x)
-            logits_u = model(inputs_aug)
-            loss, class_loss, consistency_loss = semiloss(logits_x, targets_x, logits_aug, logits_std.detach())
+            loss, class_loss, consistency_loss = semiloss_mixup(logits_mixup, mixed_targets, logits_aug,targets_u)
+
         meters.update('loss', loss.item())
         meters.update('class_loss', class_loss.item())
         meters.update('cons_loss', consistency_loss.item())
@@ -204,16 +193,7 @@ def save_checkpoint(name ,state, dirpath, epoch):
     LOG.info("--- checkpoint saved to %s ---" % checkpoint_path)
 
 
-def get_current_consistency_weight(epoch):
-    # Consistency ramp-up from https://arxiv.org/abs/1610.02242
-    return args.consistency * sigmoid_rampup(epoch, args.consistency_rampup)
 
-
-def get_current_entropy_weight(epoch):
-    if epoch > args.consistency_rampup:
-        return args.entropy_cost
-    else:
-        return 0
 
 
 def sharpen(logits):
@@ -247,22 +227,6 @@ class WarmupCosineSchedule(LambdaLR):
     
 
 
-def mixup(all_inputs, all_targets, model,epoch):
-    l = np.random.beta(args.alpha, args.alpha)
-
-    length = get_unsup_size(epoch)
-    all_inputs = all_inputs[:args.batch_size+length]
-    all_targets = all_targets[:args.batch_size+length]
-    idx = torch.randperm(all_inputs.size(0))
-    input_a, input_b = all_inputs[idx], all_inputs[idx][idx]
-    target_a, target_b = all_targets[idx], all_targets[idx][idx]
-
-    mixed_input = l * input_a + (1 - l) * input_b
-    mixed_target = l * target_a + (1 - l) * target_b
-
-    logits = model(mixed_input)
-    
-    return logits, mixed_target
 
 
 def semiloss(logits_x, targets_x, logits_u, targets_u):
@@ -276,7 +240,9 @@ def semiloss_mixup(logits_x, targets_x, logits_u, targets_u):
     class_loss = -torch.mean(torch.sum(F.log_softmax(logits_x, dim=1) * targets_x, dim=1))
     if args.confidence_thresh > 0:
         loss_mask = torch.max(torch.softmax(targets_u, dim=1),dim=1)[0].gt(args.confidence_thresh).float().detach()
-        consistency_loss = torch.mean(torch.sum(F.softmax(targets_u,1) * (F.log_softmax(targets_u, 1) - F.log_softmax(logits_u, dim=1)), 1)*loss_mask)
+        #consistency_loss = torch.sum(F.softmax(targets_u, 1) * (F.log_softmax(targets_u, 1) - F.log_softmax(logits_u, dim=1)), 1)
+        consistency_loss = -torch.sum(F.log_softmax(logits_u, dim=1) * targets_u, dim=1)
+        consistency_loss = torch.mean(consistency_loss*loss_mask)
     else:
         consistency_loss = torch.mean(torch.sum(F.softmax(targets_u,1) * (F.log_softmax(targets_u, 1) - F.log_softmax(logits_u, dim=1)), 1))
 
