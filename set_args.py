@@ -52,7 +52,7 @@ def create_parser():
     parser.add_argument('--gpu', default='0', type=str,
                 help='id(s) for CUDA_VISIBLE_DEVICES')
     parser.add_argument('--seed', type=int, default=42, help='manual seed')
-    parser.add_argument('--confidence-thresh', default=0.8, type=float)
+    parser.add_argument('--confidence-thresh', default=0.95, type=float)
     parser.add_argument('--scheduler', default='linear')
     parser.add_argument('--ema-stage', type=int, default=16)
     parser.add_argument('--optimizer', type=str, default='Adam')
