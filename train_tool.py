@@ -51,6 +51,7 @@ def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model,op
         targets_x = torch.zeros(batch_size, 10).scatter_(1, targets_x.view(-1, 1), 1).cuda(non_blocking=True)
 
         targets_u = torch.FloatTensor(all_labels[unlabel_index, :]).cuda()
+        targets_u = sharpen(targets_u)
         targets_u = targets_u.detach()
 
         if args.mixup:
@@ -60,7 +61,6 @@ def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model,op
             index_mask = torch.max(target_a, dim=1)[0].gt(args.confidence_thresh)
             input_a = input_a[index_mask]
             target_a = target_a[index_mask]
-            print(input_a.size(0))
             l = np.random.beta(args.alpha, args.alpha)
             idx = torch.randperm(input_a.size(0))
             input_b = input_a[idx]
@@ -112,8 +112,6 @@ def validate(val_loader, model, criterion, epoch):
     model.eval()
 
     end = time.time()
-    all_labels = None
-    all_logits = None
     with torch.no_grad():
         for batch_idx, (inputs, targets, _) in enumerate(val_loader):
             # measure data loading time
@@ -123,13 +121,6 @@ def validate(val_loader, model, criterion, epoch):
             # compute output
             logits = model(inputs)
             loss = criterion(logits, targets)
-
-            if all_labels is None:
-                all_labels = targets
-                all_logits = logits
-            else:
-                all_labels = torch.cat([all_labels, targets], dim=0)
-                all_logits = torch.cat([all_logits, logits], dim=0)
 
             # measure accuracy and record loss
             prec1, prec5 = accuracy(logits, targets, topk=(1, 5))
@@ -239,7 +230,7 @@ def semiloss(logits_x, targets_x, logits_u, targets_u):
 def semiloss_mixup(logits_x, targets_x, logits_u, targets_u):
     class_loss = -torch.mean(torch.sum(F.log_softmax(logits_x, dim=1) * targets_x, dim=1))
     if args.confidence_thresh > 0:
-        loss_mask = torch.max(torch.softmax(targets_u, dim=1),dim=1)[0].gt(args.confidence_thresh).float().detach()
+        loss_mask = torch.max(targets_u, dim=1)[0].gt(args.confidence_thresh).float().detach()
         #consistency_loss = torch.sum(F.softmax(targets_u, 1) * (F.log_softmax(targets_u, 1) - F.log_softmax(logits_u, dim=1)), 1)
         consistency_loss = -torch.sum(F.log_softmax(logits_u, dim=1) * targets_u, dim=1)
         consistency_loss = torch.mean(consistency_loss*loss_mask)
