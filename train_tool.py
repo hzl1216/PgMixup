@@ -55,18 +55,21 @@ def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model,op
 
         if args.mixup:
             length = get_unsup_size(epoch + i / args.epoch_iteration)
-            input_a = torch.cat([inputs_x, inputs_std[: length]], dim=0)
-            target_a = torch.cat([targets_x, targets_u[: length]], dim=0)
-            index_mask = torch.max(target_a, dim=1)[0].gt(args.confidence_thresh)
-            input_a = input_a[index_mask]
-            target_a = target_a[index_mask]
+            index_mask = torch.max(targets_u, dim=1)[0].gt(args.confidence_thresh)
+            inputs_u = inputs_std[index_mask]
+            targets_u = targets_u[index_mask]
+            if inputs_u.size(0) > 0:
+
+                inputs_x = torch.cat([inputs_x, inputs_u[:min(inputs_u.size(0), length)]], dim=0)
+                targets_x = torch.cat([targets_x, targets_u[:min(inputs_u.size(0), length)]], dim=0)
+
             l = np.random.beta(args.alpha, args.alpha)
-            idx = torch.randperm(input_a.size(0))
-            input_b = input_a[idx]
-            target_b = target_a[idx]
-            mixed_inputs = l * input_a + (1 - l) * input_b
-            mixed_targets = l * target_a + (1 - l) * target_b
-            del input_a, target_a, input_b, target_b
+            idx = torch.randperm(inputs_x.size(0))
+            input_b = inputs_x[idx]
+            target_b = targets_x[idx]
+            mixed_inputs = l * inputs_x + (1 - l) * input_b
+            mixed_targets = l * targets_x + (1 - l) * target_b
+            del inputs_x, targets_x, input_b, target_b
             all_inputs = torch.cat([inputs_aug, inputs_std, mixed_inputs], dim=0)
             all_logits = model(all_inputs)
             logits_aug, logits_std = all_logits[:args.batch_size * args.unsup_ratio * 2 ].chunk(2)
