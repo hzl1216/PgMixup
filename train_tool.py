@@ -85,8 +85,7 @@ def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model,op
         loss.backward()
         optimizer.step()
         ema_optimizer.step()
-        if scheduler is not None:
-            scheduler.step()
+        scheduler.step()
         # measure elapsed time
         meters.update('batch_time', time.time() - end)
         end = time.time()

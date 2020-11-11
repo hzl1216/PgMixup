@@ -52,12 +52,9 @@ def main(dataset):
         optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=0.9, weight_decay=args.weight_decay, nesterov=True)
     ema_optimizer = WeightEMA(model, ema_model, tmp_model, alpha=args.ema_decay)
     cudnn.benchmark = True
-    if args.warmup_step>0:
-        totals = args.epochs*args.epoch_iteration
-        warmup_step = args.warmup_step*args.epoch_iteration
-        scheduler =  WarmupCosineSchedule(optimizer,warmup_step,totals)
-    else:
-        scheduler = None
+    totals = args.epochs*args.epoch_iteration
+    warmup_step = args.warmup_step*args.epoch_iteration
+    scheduler = WarmupCosineSchedule(optimizer, warmup_step, totals)
     all_labels = np.zeros([len(train_unlabeled_set), 10])
     # optionally resume from a checkpoint
     title = dataset
