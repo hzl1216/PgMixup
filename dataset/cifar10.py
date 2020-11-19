@@ -15,47 +15,38 @@ class TransformTwice:
         return out1, out2
 
 
-def get_cifar10(root, n_labeled, val_size=-1,
+def get_cifar10(root, n_labeled,
                 transform_1=None, transform_2=None, transform_val=None,
                 download=True):
     base_dataset = torchvision.datasets.CIFAR10(root, train=True, download=download)
-    train_labeled_idxs, train_unlabeled_idxs, val_idxs = train_val_split(base_dataset.targets, n_labeled, val_size)
+    train_labeled_idxs, train_unlabeled_idxs = train_val_split(base_dataset.targets, n_labeled)
 
     train_labeled_dataset = CIFAR10_labeled(root, train_labeled_idxs, train=True, transform=transform_2)
     train_unlabeled_dataset = CIFAR10_unlabeled(root, train_unlabeled_idxs, train=True,
                                                 transform=TransformTwice(transform_1, transform_2))
     train_unlabeled_dataset2 = CIFAR10_unlabeled(root, train_unlabeled_idxs, train=True,
                                                  transform=transform_val)
-    if val_size > 0:
-        val_dataset = CIFAR10_labeled(root, val_idxs, train=True, transform=transform_val, download=True)
-    else:
-        val_dataset = None
+
     test_dataset = CIFAR10_labeled(root, train=False, transform=transform_val, download=True)
 
-    print('#Labeled: %d #Unlabeled: %d #val: %d #test: %d'%(len(train_labeled_idxs),len(train_unlabeled_idxs),len(train_unlabeled_idxs),len(test_dataset)))
-    return train_labeled_dataset, train_unlabeled_dataset, train_unlabeled_dataset2, val_dataset, test_dataset
+    print('#Labeled: %d #Unlabeled: %d  #test: %d'%(len(train_labeled_idxs),len(train_unlabeled_idxs),len(test_dataset)))
+    return train_labeled_dataset, train_unlabeled_dataset, train_unlabeled_dataset2, test_dataset
 
 
-def train_val_split(labels, n_labeled, val_size, classes=10):
+def train_val_split(labels, n_labeled, classes=10):
     labels = np.array(labels)
     train_labeled_idxs = []
-    train_unlabeled_idxs = []
-    val_idxs = []
+    train_unlabeled_idxs = np.array(range(len(labels)))
 
     for i in range(classes):
-        idxs = np.where(labels == i)[0]
-        np.random.shuffle(idxs)
-        train_labeled_idxs.extend(idxs[:n_labeled // classes])
-        if val_size > 0:
-            train_unlabeled_idxs.extend(idxs[n_labeled // classes:-val_size // classes])
-            val_idxs.extend(idxs[-val_size // classes:])
-        else:
-            train_unlabeled_idxs.extend(idxs[n_labeled // classes:])
+        idx = np.where(labels == i)[0]
+        idx = np.random.choice(idx, n_labeled // classes, False)
+        train_labeled_idxs.extend(idx)
+
     np.random.shuffle(train_labeled_idxs)
     np.random.shuffle(train_unlabeled_idxs)
-    np.random.shuffle(val_idxs)
 
-    return train_labeled_idxs, train_unlabeled_idxs, val_idxs
+    return train_labeled_idxs, train_unlabeled_idxs
 
 
 class CIFAR10_labeled(torchvision.datasets.CIFAR10):

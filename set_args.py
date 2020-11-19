@@ -25,7 +25,6 @@ def create_parser():
     parser.add_argument('--consistency-rampup', default=5, type=int, metavar='EPOCHS',
                         help='length of the consistency loss ramp-up')
     parser.add_argument('--entropy-cost', default=0.1, type=float, metavar='WEIGHT')
-    parser.add_argument('--softmax-temp', default=0.4, type=float, metavar='softmax-temp')
     parser.add_argument('--checkpoint-epochs', default=1, type=int,
                         metavar='EPOCHS', help='checkpoint frequency in epochs, 0 to turn checkpointing off (default: 1)')
     parser.add_argument('--evaluation-epochs', default=1, type=int,

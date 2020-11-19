@@ -18,7 +18,7 @@ def set_args(input_args):
     args = input_args
 
 
-def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model,optimizer, ema_optimizer, all_labels,epoch, scheduler=None):
+def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model, optimizer, all_labels,epoch, scheduler=None):
     labeled_train_iter = iter(train_labeled_loader)
     unlabeled_train_iter = iter(train_unlabeled_loader)
 
@@ -26,7 +26,6 @@ def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model,op
 
     # switch to train mode
     model.train()
-    ema_model.train()
     end = time.time()
     for i in range(args.epoch_iteration):
         try:
@@ -51,18 +50,15 @@ def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model,op
         targets_x = torch.zeros(batch_size, 10).scatter_(1, targets_x.view(-1, 1), 1).cuda(non_blocking=True)
 
         targets_u = torch.FloatTensor(all_labels[unlabel_index, :]).cuda()
+        targets_u = sharpen(targets_u)
         targets_u = targets_u.detach()
 
         if args.mixup:
-            length = get_unsup_size(epoch + i / args.epoch_iteration)
-            index_mask = torch.max(targets_u, dim=1)[0].gt(args.confidence_thresh)
-            inputs_u = inputs_std[index_mask]
-            targets_u = targets_u[index_mask]
-            if inputs_u.size(0) > 0:
+            mixup_size = get_mixup_size(epoch + i / args.epoch_iteration)
 
-                inputs_x = torch.cat([inputs_x, inputs_u[:min(inputs_u.size(0), length)]], dim=0)
-                targets_x = torch.cat([targets_x, targets_u[:min(inputs_u.size(0), length)]], dim=0)
-
+            inputs_x = torch.cat([inputs_x, inputs_std[:mixup_size]], dim=0)
+            targets_x = torch.cat([targets_x, targets_u[:mixup_size]], dim=0)
+            mixup_size += args.batch_size
             l = np.random.beta(args.alpha, args.alpha)
             idx = torch.randperm(inputs_x.size(0))
             input_b = inputs_x[idx]
@@ -70,10 +66,11 @@ def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model,op
             mixed_inputs = l * inputs_x + (1 - l) * input_b
             mixed_targets = l * targets_x + (1 - l) * target_b
             del inputs_x, targets_x, input_b, target_b
-            all_inputs = torch.cat([inputs_aug, inputs_std, mixed_inputs], dim=0)
+            all_inputs = torch.cat([mixed_inputs, inputs_aug, inputs_std])
+
             all_logits = model(all_inputs)
-            logits_aug, logits_std = all_logits[:args.batch_size * args.unsup_ratio * 2 ].chunk(2)
-            logits_mixup = all_logits[args.batch_size * args.unsup_ratio * 2 :]
+            logits_aug, logits_std = all_logits[mixup_size:].chunk(2)
+            logits_mixup = all_logits[:mixup_size]
             del all_logits
             loss, class_loss, consistency_loss = semiloss_mixup(logits_mixup, mixed_targets, logits_aug, logits_std.detach())
 
@@ -84,7 +81,7 @@ def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model,op
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-        ema_optimizer.step()
+        ema_model.update(model)
         scheduler.step()
         # measure elapsed time
         meters.update('batch_time', time.time() - end)
@@ -98,7 +95,6 @@ def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model,op
                 'Class {meters[class_loss]:.4f}\t'
                 'Cons {meters[cons_loss]:.4f}\t'.format(
                     epoch, i, args.epoch_iteration, meters=meters))
-    ema_optimizer.step(True)
     return meters.averages()['class_loss/avg'], meters.averages()['cons_loss/avg'], all_labels
 
 
@@ -110,7 +106,6 @@ def validate(val_loader, model, criterion, epoch):
     top5 = AverageMeter()
 
     # switch to evaluate mode
-    model.eval()
 
     end = time.time()
     with torch.no_grad():
@@ -230,18 +225,12 @@ def semiloss(logits_x, targets_x, logits_u, targets_u):
 
 def semiloss_mixup(logits_x, targets_x, logits_u, targets_u):
     class_loss = -torch.mean(torch.sum(F.log_softmax(logits_x, dim=1) * targets_x, dim=1))
-
     consistency_loss = torch.mean(torch.sum(F.softmax(targets_u,1) * (F.log_softmax(targets_u, 1) - F.log_softmax(logits_u, dim=1)), 1))
 
-    if args.entropy_cost >0:
-        entropy_loss = - torch.mean(torch.sum(torch.mul(F.softmax(logits_u,dim=1), F.log_softmax(logits_u,dim=1)),dim=1))
-    else:
-        entropy_loss = 0
-    return class_loss + args.consistency_weight * consistency_loss + args.entropy_cost * entropy_loss, class_loss, consistency_loss
+    return class_loss + args.consistency_weight * consistency_loss,  class_loss, consistency_loss
 
 
 def get_u_label(model, loader,all_labels):
-    model.eval()
     with torch.no_grad():
         for batch_idx, (inputs, _, index) in enumerate(loader):
             inputs = inputs.cuda()
@@ -253,9 +242,8 @@ def get_u_label(model, loader,all_labels):
     return all_labels
 
 
-def scheduler(epoch,totals=None,start=0.0,end=1.0):
-    if totals is None:
-        totals = args.epochs
+def scheduler(epoch, start=0.0, end=1.0):
+    totals = args.epochs
     step_ratio = epoch/totals
     if args.scheduler == 'linear':
         coeff = step_ratio
@@ -265,9 +253,8 @@ def scheduler(epoch,totals=None,start=0.0,end=1.0):
         coeff = 1 - np.exp((-step_ratio) * 5)
     else:
         return 1.0
-    return coeff * (end - start) +start
+    return coeff * (end - start) + start
 
-
-def get_unsup_size(epoch):
-    size = int(min(args.mixup_size,args.unsup_ratio)*args.batch_size*scheduler(epoch))
+def get_mixup_size(epoch):
+    size = int(args.mixup_size*args.batch_size*scheduler(epoch)/4) * 4
     return size
