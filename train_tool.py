@@ -226,9 +226,7 @@ def semiloss(logits_x, targets_x, logits_u, targets_u):
 def semiloss_mixup(logits_x, targets_x, logits_u, targets_u):
     class_loss = -torch.mean(torch.sum(F.log_softmax(logits_x, dim=1) * targets_x, dim=1))
     consistency_loss = torch.mean(torch.sum(F.softmax(targets_u,1) * (F.log_softmax(targets_u, 1) - F.log_softmax(logits_u, dim=1)), 1))
-    entropy_loss = - args.entropy_cost * torch.mean(
-        torch.sum(torch.mul(F.softmax(logits_u, dim=1), F.log_softmax(logits_u, dim=1)), dim=1))
-    return class_loss + args.consistency_weight * consistency_loss + entropy_loss,  class_loss, consistency_loss
+    return class_loss + args.consistency_weight * consistency_loss,  class_loss, consistency_loss
 
 
 def get_u_label(model, loader,all_labels):
@@ -257,5 +255,6 @@ def scheduler(epoch, start=0.0, end=1.0):
     return coeff * (end - start) + start
 
 def get_mixup_size(epoch):
-    size = int(args.mixup_size*args.batch_size*scheduler(epoch)/4) * 4
+    length = args.batch_size//4
+    size = int(args.mixup_size*args.batch_size*scheduler(epoch)/length) * length
     return size
