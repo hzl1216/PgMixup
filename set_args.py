@@ -14,16 +14,11 @@ def create_parser():
                         metavar='N', help='The ratio between batch size of unlabeled data and labeled data')
     parser.add_argument('--lr', '--learning-rate', default=0.03, type=float)
     parser.add_argument('--weight-decay', '--wd', default=5e-4, type=float,
-                        metavar='W', help='weight decay (default: 1e-4)')
+                        metavar='W', help='weight decay (default: 5e-4)')
     parser.add_argument('--ema-decay', default=0.999, type=float, metavar='ALPHA',
                         help='ema variable decay rate (default: 0.999)')
     parser.add_argument('--consistency-weight', default=1.0, type=float, metavar='WEIGHT',
                         help='use consistency loss with given weight (default: None)')
-    parser.add_argument('--consistency-type', default="mse", type=str, metavar='TYPE',
-                        choices=['mse', 'kl'],
-                        help='consistency loss type to use')
-    parser.add_argument('--consistency-rampup', default=5, type=int, metavar='EPOCHS',
-                        help='length of the consistency loss ramp-up')
     parser.add_argument('--entropy-cost', default=0.1, type=float, metavar='WEIGHT')
     parser.add_argument('--checkpoint-epochs', default=1, type=int,
                         metavar='EPOCHS', help='checkpoint frequency in epochs, 0 to turn checkpointing off (default: 1)')
@@ -53,10 +48,9 @@ def create_parser():
     parser.add_argument('--seed', type=int, default=42, help='manual seed')
     parser.add_argument('--confidence-thresh', default=0.95, type=float)
     parser.add_argument('--scheduler', default='linear')
-    parser.add_argument('--ema-stage', type=int, default=16)
     parser.add_argument('--optimizer', type=str, default='Adam')
     parser.add_argument('--val-size', type=int, default=-1)
-    parser.add_argument('--mixup-size', type=int, default=7)
+    parser.add_argument('--mixup-size', type=int, default=5)
     parser.add_argument('--dataset', type=str, default='cifar10')
     parser.add_argument('--autoaugment', type=str2bool, default=True)
     return parser.parse_args()
