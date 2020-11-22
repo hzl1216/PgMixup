@@ -198,7 +198,7 @@ def get_u_label(model, loader,all_labels):
 
             # compute output
             logits = model(inputs)
-            all_labels[index] = torch.softmax(logits/0.4, dim=1).cpu().numpy()
+            all_labels[index] = torch.softmax(logits, dim=1).cpu().numpy()
 
     return all_labels
 
@@ -217,6 +217,6 @@ def scheduler(epoch, start=0.0, end=1.0):
     return coeff * (end - start) + start
 
 def get_mixup_size(epoch):
-    length = args.batch_size//4
+    length = max(args.batch_size//8,4)
     size = int(args.mixup_size*args.batch_size*scheduler(epoch)/length) * length
     return size
