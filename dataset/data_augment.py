@@ -1,27 +1,21 @@
 from dataset.autoaugment import CIFAR10Policy,Cutout,SVHNPolicy
 import torchvision.transforms as transforms
-from dataset.randaugment import RandAugmentMC
 def get_data_augment(dataset):
     if dataset == 'cifar10':
         means = (0.4914, 0.4822, 0.4465)
         stds = (0.2471, 0.2435, 0.2616)
         transform_aug = transforms.Compose(
-            [
-                transforms.RandomHorizontalFlip(),
-                transforms.RandomCrop(size=32,
-                                      padding=int(32 * 0.125),
-                                      padding_mode='reflect'),
-                RandAugmentMC(n=2, m=10),
-                transforms.ToTensor(),
-                transforms.Normalize(means, stds),
+            [transforms.RandomCrop(32, padding=4),  # fill parameter needs torchvision installed from source
+             transforms.RandomHorizontalFlip(), CIFAR10Policy(),
+             transforms.ToTensor(),
+             Cutout(n_holes=1, length=16),  # (https://github.com/uoguelph-mlrg/Cutout/blob/master/util/cutout.py)
+             transforms.Normalize(means, stds),
              ])
         transform_normal = transforms.Compose([
+            transforms.RandomCrop(32, padding=4),
             transforms.RandomHorizontalFlip(),
-            transforms.RandomCrop(size=32,
-                                  padding=int(32 * 0.125),
-                                  padding_mode='reflect'),
             transforms.ToTensor(),
-            transforms.Normalize(mean=means, std=stds)
+            transforms.Normalize(means, stds),
         ])
 
         transform_val = transforms.Compose([
