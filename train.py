@@ -1,4 +1,5 @@
 from train_tool import *
+import torch.nn as nn
 import torch.backends.cudnn as cudnn
 import torch.optim as optim
 import torch.utils.data as data
@@ -11,14 +12,9 @@ from set_args import create_parser
 from dataset.data_augment import get_data_augment
 def main(dataset):
     print('start train %s '%dataset)
-    def create_model(ema=False):
-        print("=> creating {ema}model ".format(
-            ema='EMA ' if ema else ''))
+    def create_model():
         model = WideResNet(num_classes=10)
         model = nn.DataParallel(model).cuda()
-        if ema:
-            for param in model.parameters():
-                param.detach_()
         return model
 
     transform_aug, transform_normal, transform_val = get_data_augment(dataset)
@@ -92,13 +88,12 @@ def main(dataset):
         if args.evaluation_epochs and (epoch + 1) % args.evaluation_epochs == 0:
             start_time = time.time()
             print("Evaluating the  model:")
-            model.eval()
-            test_loss, test_acc = validate(test_loader, model, criterion, epoch)
+            test_loss, test_acc = validate(test_loader, model, criterion)
             print("--- validation in %s seconds ---" % (time.time() - start_time))
             logger.append([epoch, class_loss, cons_loss, test_loss, test_acc])
 
             print("Evaluating the EMA model:")
-            ema_test_loss, ema_test_acc = validate(test_loader, ema_model.ema, criterion, epoch)
+            ema_test_loss, ema_test_acc = validate(test_loader, ema_model.ema, criterion)
             print("--- validation in %s seconds ---" % (time.time() - start_time))
             logger.append([epoch, class_loss, cons_loss,ema_test_loss, ema_test_acc])
 
