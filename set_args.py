@@ -49,7 +49,6 @@ def create_parser():
     parser.add_argument('--confidence-thresh', default=0.95, type=float)
     parser.add_argument('--scheduler', default='linear')
     parser.add_argument('--optimizer', type=str, default='Adam')
-    parser.add_argument('--val-size', type=int, default=-1)
     parser.add_argument('--mixup-size', type=int, default=5)
     parser.add_argument('--dataset', type=str, default='cifar10')
     parser.add_argument('--autoaugment', type=str2bool, default=True)
