@@ -10,7 +10,7 @@ def create_parser():
                         help='manual epoch number (useful on restarts)')
     parser.add_argument('--batch-size', default=64, type=int,
                         metavar='N', help='labeled-batch size')
-    parser.add_argument('--unsup-ratio', default=7, type=int,
+    parser.add_argument('--unsup-ratio', default=5, type=int,
                         metavar='N', help='The ratio between batch size of unlabeled data and labeled data')
     parser.add_argument('--lr', '--learning-rate', default=0.03, type=float)
     parser.add_argument('--weight-decay', '--wd', default=5e-4, type=float,
@@ -46,7 +46,6 @@ def create_parser():
     parser.add_argument('--gpu', default='0', type=str,
                 help='id(s) for CUDA_VISIBLE_DEVICES')
     parser.add_argument('--seed', type=int, default=42, help='manual seed')
-    parser.add_argument('--confidence-thresh', default=0.95, type=float)
     parser.add_argument('--scheduler', default='linear')
     parser.add_argument('--optimizer', type=str, default='Adam')
     parser.add_argument('--mixup-size', type=int, default=5)
