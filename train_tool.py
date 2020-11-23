@@ -217,6 +217,5 @@ def scheduler(epoch, start=0.0, end=1.0):
     return coeff * (end - start) + start
 
 def get_mixup_size(epoch):
-    length = max(args.batch_size//8,4)
-    size = int(args.mixup_size*args.batch_size*scheduler(epoch)/length) * length
+    size = int(args.mixup_size*args.batch_size*scheduler(epoch)/4) * 4
     return size
