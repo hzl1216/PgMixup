@@ -49,7 +49,6 @@ def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model, o
         targets_x = torch.zeros(batch_size, 10).scatter_(1, targets_x.view(-1, 1), 1).cuda(non_blocking=True)
 
         targets_u = torch.FloatTensor(all_labels[unlabel_index, :]).cuda()
-        targets_u = sharpen(targets_u)
         targets_u = targets_u.detach()
 
         if args.mixup:
@@ -92,7 +91,7 @@ def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model, o
                 'Class {meters[class_loss]:.4f}\t'
                 'Cons {meters[cons_loss]:.4f}\t'.format(
                     epoch, i, args.epoch_iteration, meters=meters))
-    return meters.averages()['class_loss/avg'], meters.averages()['cons_loss/avg'], all_labels
+    return meters.averages()['class_loss/avg'], meters.averages()['cons_loss/avg']
 
 
 def validate(val_loader, model, criterion):
@@ -191,6 +190,7 @@ def semiloss_mixup(logits_x, targets_x, logits_u, targets_u):
 
 
 def get_u_label(model, loader,all_labels):
+    model.eval()
     with torch.no_grad():
         for batch_idx, (inputs, _, index) in enumerate(loader):
             inputs = inputs.cuda()
