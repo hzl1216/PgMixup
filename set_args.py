@@ -40,7 +40,7 @@ def create_parser():
                         help='train step of one epoch')
     parser.add_argument('--warmup-step', type=int, default=0,
                         help='Number of workers')
-    parser.add_argument('--alpha', default=0.5, type=float)
+    parser.add_argument('--alpha', default=0.75, type=float)
     parser.add_argument('--mixup', default=True, type=str2bool,
                         help='use mixup', metavar='BOOL')
     parser.add_argument('--gpu', default='0', type=str,
