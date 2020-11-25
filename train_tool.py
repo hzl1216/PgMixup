@@ -54,7 +54,6 @@ def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model, o
 
         if args.mixup:
             mixup_size = get_mixup_size(epoch + i / args.epoch_iteration)
-
             inputs_x = torch.cat([inputs_x, inputs_std[:mixup_size]], dim=0)
             targets_x = torch.cat([targets_x, targets_u[:mixup_size]], dim=0)
             mixup_size += args.batch_size
