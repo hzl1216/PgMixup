@@ -54,7 +54,7 @@ def main(dataset):
     totals = args.epochs*args.epoch_iteration
     warmup_step = args.warmup_step*args.epoch_iteration
     scheduler = WarmupCosineSchedule(optimizer, warmup_step, totals)
-    all_labels = np.zeros([len(train_unlabeled_set), 10])
+    all_labels = torch.zeros([len(train_unlabeled_set), 10]).cuda()
     # optionally resume from a checkpoint
     title = dataset
     if args.resume:
