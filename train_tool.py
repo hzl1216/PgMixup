@@ -57,7 +57,7 @@ def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model, o
             targets_x = torch.cat([targets_x, targets_u[:mixup_size]], dim=0)
             mixup_size += args.batch_size
             mix = torch.distributions.Beta(args.alpha, args.alpha).sample([mixup_size, 1, 1, 1]).cuda()
-            mix = torch.maximum(mix, 1.0 - mix)
+            mix = torch.max(mix, 1.0 - mix)
             idx = torch.randperm(mixup_size)
             mixed_inputs = mix * inputs_x + (1.0 - mix) * inputs_x[idx]
             mixed_targets = mix[:, :, 0, 0] * targets_x + (1.0 - mix[:, :, 0, 0]) * targets_x[idx]
