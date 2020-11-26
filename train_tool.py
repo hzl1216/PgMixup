@@ -197,7 +197,7 @@ def get_u_label(model, loader,all_labels):
 
             # compute output
             logits = model(inputs)
-            targets = torch.max(torch.softmax(logits, dim=1), dim=-1)[1]
+            targets = torch.max(torch.softmax(logits, dim=1), dim=-1)[1].cpu()
             all_labels[index] = torch.zeros(inputs.size(0), 10).scatter_(1, targets.view(-1, 1), 1)
     return all_labels
 
