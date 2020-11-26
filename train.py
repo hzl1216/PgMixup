@@ -68,7 +68,7 @@ def main(dataset):
         scheduler.load_state_dict(checkpoint['scheduler'])
         print("Evaluating the  model:")
 
-        test_loss, test_acc = validate(test_loader, model, criterion, args.start_epoch)
+        test_loss, test_acc = validate(test_loader, ema_model.ema, criterion)
         print("=> loaded checkpoint '{}' (epoch {})".format(args.resume, checkpoint['epoch']))
 
         logger = Logger(os.path.join(args.out_path, '%s_log_%d.txt'%(dataset,args.n_labeled)), title=title, resume=True)
@@ -80,9 +80,9 @@ def main(dataset):
     for epoch in range(args.start_epoch, args.epochs):
         start_time = time.time()
         # train for one epoch
-        all_labels = get_u_label(ema_model.ema, train_unlabeled_loader2, all_labels)
-        class_loss, cons_loss = train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model, optimizer, all_labels, epoch, scheduler)
 
+        class_loss, cons_loss = train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model, optimizer, all_labels, epoch, scheduler)
+        all_labels = get_u_label(ema_model.ema, train_unlabeled_loader2, all_labels)
         print("--- training epoch in %s seconds ---" % (time.time() - start_time))
 
         if args.evaluation_epochs and (epoch + 1) % args.evaluation_epochs == 0:

@@ -56,12 +56,12 @@ def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model, o
             inputs_x = torch.cat([inputs_x, inputs_std[:mixup_size]], dim=0)
             targets_x = torch.cat([targets_x, targets_u[:mixup_size]], dim=0)
             mixup_size += args.batch_size
-            l = np.random.beta(args.alpha, args.alpha)
+            mix = torch.distributions.Beta(args.alpha, args.alpha).sample([mixup_size, 1, 1, 1]).cuda()
+            mix = torch.maximum(mix, 1.0 - mix)
             idx = torch.randperm(mixup_size)
-            input_b, target_b = inputs_x[idx], targets_x[idx]
-            mixed_inputs = l * inputs_x + (1 - l) * input_b
-            mixed_targets = l * targets_x + (1 - l) * target_b
-            del inputs_x, targets_x, input_b, target_b
+            mixed_inputs = mix * inputs_x + (1.0 - mix) * inputs_x[idx]
+            mixed_targets = mix[:, :, 0, 0] * targets_x + (1.0 - mix[:, :, 0, 0]) * targets_x[idx]
+            del inputs_x, targets_x
             all_inputs = torch.cat([mixed_inputs, inputs_aug, inputs_std])
 
             all_logits = model(all_inputs)
@@ -190,7 +190,6 @@ def semiloss_mixup(logits_x, targets_x, logits_u, targets_u):
 
 
 def get_u_label(model, loader,all_labels):
-    model.eval()
     with torch.no_grad():
         for batch_idx, (inputs, _, index) in enumerate(loader):
             inputs = inputs.cuda()
