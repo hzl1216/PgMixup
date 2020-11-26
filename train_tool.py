@@ -47,7 +47,8 @@ def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model, o
 
         batch_size = inputs_x.size(0)
         targets_x = torch.zeros(batch_size, 10).scatter_(1, targets_x.view(-1, 1), 1).cuda(non_blocking=True)
-        targets_u = all_labels[unlabel_index, :]
+
+        targets_u = torch.FloatTensor(all_labels[unlabel_index, :]).cuda(non_blocking=True)
         targets_u = targets_u.detach()
 
         if args.mixup:
@@ -173,7 +174,7 @@ class WarmupCosineSchedule(LambdaLR):
         cosine_decay = 0.5 * (1. + math.cos(math.pi * float(self.cycles) * 2.0 * progress))
         decayed = (1 - self.alpha) * cosine_decay + self.alpha
         return decayed
-    
+
 
 def semiloss(logits_x, targets_x, logits_u, targets_u):
     class_loss = -torch.mean(torch.sum(F.log_softmax(logits_x, dim=1) * targets_x, dim=1))
@@ -197,7 +198,7 @@ def get_u_label(model, loader,all_labels):
             # compute output
             logits = model(inputs)
             targets = torch.max(torch.softmax(logits, dim=1), dim=-1)[1]
-            all_labels[index] = torch.nn.functional.one_hot(targets, 10)
+            all_labels[index] = torch.zeros(inputs.size(0), 10).scatter_(1, targets.view(-1, 1), 1)
     return all_labels
 
 
