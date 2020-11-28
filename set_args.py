@@ -51,6 +51,4 @@ def create_parser():
     parser.add_argument('--mixup-size', type=int, default=5)
     parser.add_argument('--dataset', type=str, default='cifar10')
     parser.add_argument('--autoaugment', type=str2bool, default=True)
-    parser.add_argument('--seed', default=42, type=int,
-                        help="random seed")
     return parser.parse_args()
