@@ -19,7 +19,6 @@ def create_parser():
                         help='ema variable decay rate (default: 0.999)')
     parser.add_argument('--consistency-weight', default=1.0, type=float, metavar='WEIGHT',
                         help='use consistency loss with given weight (default: None)')
-    parser.add_argument('--entropy-cost', default=0.1, type=float, metavar='WEIGHT')
     parser.add_argument('--checkpoint-epochs', default=1, type=int,
                         metavar='EPOCHS', help='checkpoint frequency in epochs, 0 to turn checkpointing off (default: 1)')
     parser.add_argument('--evaluation-epochs', default=1, type=int,

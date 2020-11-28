@@ -74,11 +74,11 @@ def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model, o
         meters.update('class_loss', class_loss.item())
         meters.update('cons_loss', consistency_loss.item())
         # compute gradient and do SGD step
-        optimizer.zero_grad()
         loss.backward()
         optimizer.step()
         ema_model.update(model)
         scheduler.step()
+        model.zero_grad()
         # measure elapsed time
         meters.update('batch_time', time.time() - end)
         end = time.time()
@@ -152,28 +152,19 @@ def sharpen(logits):
     return logits
 
 
-class WarmupCosineSchedule(LambdaLR):
-    """ Linear warmup and then cosine decay.
-        Linearly increases learning rate from 0 to 1 over `warmup_steps` training steps.
-        Decreases learning rate from 1. to 0. over remaining `t_total - warmup_steps` steps following a cosine curve.
-        If `cycles` (default=0.5) is different from default, learning rate follows cosine function after warmup.
-    """
+def get_cosine_schedule_with_warmup(optimizer,
+                                    num_warmup_steps,
+                                    num_training_steps,
+                                    num_cycles=7./16.,
+                                    last_epoch=-1):
+    def _lr_lambda(current_step):
+        if current_step < num_warmup_steps:
+            return float(current_step) / float(max(1, num_warmup_steps))
+        no_progress = float(current_step - num_warmup_steps) / \
+            float(max(1, num_training_steps - num_warmup_steps))
+        return max(0., math.cos(math.pi * num_cycles * no_progress))
 
-    def __init__(self, optimizer, warmup_steps, t_total,alpha=0.004, cycles=.5, last_epoch=-1):
-        self.warmup_steps = warmup_steps
-        self.t_total = t_total
-        self.cycles = cycles
-        self.alpha = alpha
-        super(WarmupCosineSchedule, self).__init__(optimizer, self.lr_lambda, last_epoch=last_epoch)
-
-    def lr_lambda(self, step):
-        if step < self.warmup_steps:
-            return float(step) / float(max(1.0, self.warmup_steps))
-        # progress after warmup
-        progress = float(step - self.warmup_steps) / float(max(1, self.t_total - self.warmup_steps))
-        cosine_decay = 0.5 * (1. + math.cos(math.pi * float(self.cycles) * 2.0 * progress))
-        decayed = (1 - self.alpha) * cosine_decay + self.alpha
-        return decayed
+    return LambdaLR(optimizer, _lr_lambda, last_epoch)
 
 
 def semiloss(logits_x, targets_x, logits_u, targets_u):
@@ -186,9 +177,7 @@ def semiloss(logits_x, targets_x, logits_u, targets_u):
 def semiloss_mixup(logits_x, targets_x, logits_u, targets_u):
     class_loss = -torch.mean(torch.sum(F.log_softmax(logits_x, dim=1) * targets_x, dim=1))
     consistency_loss = torch.mean(torch.sum(F.softmax(targets_u,1) * (F.log_softmax(targets_u, 1) - F.log_softmax(logits_u, dim=1)), 1))
-    entropy_loss = - torch.mean(
-        torch.sum(torch.mul(F.softmax(logits_u, dim=1), F.log_softmax(logits_u, dim=1)), dim=1))
-    return class_loss + args.consistency_weight * consistency_loss + args.entropy_cost * entropy_loss,  class_loss, consistency_loss
+    return class_loss + args.consistency_weight * consistency_loss,  class_loss, consistency_loss
 
 
 def get_u_label(model, loader,all_labels):
