@@ -8,13 +8,14 @@ from models.ema import ModelEMA
 from dataset.cifar10 import get_cifar10
 from dataset.svhn import get_svhn
 import os
+import random
 from set_args import create_parser
 from dataset.data_augment import get_data_augment
 def main(dataset):
     print('start train %s '%dataset)
     def create_model():
         model = WideResNet(num_classes=10)
-        model = nn.DataParallel(model).cuda()
+        model = model.cuda()
         return model
 
     transform_aug, transform_normal, transform_val = get_data_augment(dataset)
@@ -115,10 +116,10 @@ if __name__ == '__main__':
             os.makedirs(path) 
     args = create_parser()
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
-    if args.seed is None:
-        np.random.seed(args.seed)
-        torch.manual_seed(args.seed)
-        torch.cuda.manual_seed_all(args.seed)
+    random.seed(args.seed)
+    np.random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    torch.cuda.manual_seed_all(args.seed)
     set_args(args)
     main(args.dataset)
 

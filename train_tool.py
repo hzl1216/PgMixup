@@ -185,8 +185,13 @@ def semiloss(logits_x, targets_x, logits_u, targets_u):
 
 def semiloss_mixup(logits_x, targets_x, logits_u, targets_u):
     class_loss = -torch.mean(torch.sum(F.log_softmax(logits_x, dim=1) * targets_x, dim=1))
-    consistency_loss = torch.mean(torch.sum(F.softmax(targets_u,1) * (F.log_softmax(targets_u, 1) - F.log_softmax(logits_u, dim=1)), 1))
-    return class_loss + args.consistency_weight * consistency_loss,  class_loss, consistency_loss
+    pseudo_label = torch.softmax(targets_u.detach_() / 0.4, dim=-1)
+    max_probs, targets_u = torch.max(pseudo_label, dim=-1)
+    mask = max_probs.ge(0.95).float()
+
+    Lu = (F.cross_entropy(logits_u, targets_u,
+                          reduction='none') * mask).mean()
+    return class_loss + args.consistency_weight * Lu,  class_loss, Lu
 
 
 def get_u_label(model, loader,all_labels):
@@ -196,9 +201,8 @@ def get_u_label(model, loader,all_labels):
 
             # compute output
             logits = model(inputs)
-            all_labels[index] = torch.softmax(logits/0.4, dim=1).cpu()
-            # targets = torch.max(torch.softmax(logits, dim=1), dim=-1)[1].cpu()
-            # all_labels[index] = torch.zeros(inputs.size(0), 10).scatter_(1, targets.view(-1, 1), 1)
+            targets = torch.max(torch.softmax(logits, dim=1), dim=-1)[1].cpu()
+            all_labels[index] = torch.zeros(inputs.size(0), 10).scatter_(1, targets.view(-1, 1), 1)
     return all_labels
 
 
