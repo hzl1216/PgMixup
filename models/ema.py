@@ -5,7 +5,7 @@ import torch
 class ModelEMA(object):
     def __init__(self, args, model, decay):
         self.ema = deepcopy(model)
-        self.ema.to(args.device)
+        self.ema.cuda()
         self.ema.eval()
         self.decay = decay
         self.ema_has_module = hasattr(self.ema, 'module')

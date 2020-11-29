@@ -54,8 +54,7 @@ def main(dataset):
     cudnn.benchmark = True
     totals = args.epochs*args.epoch_iteration
     warmup_step = args.warmup_step*args.epoch_iteration
-    scheduler = get_cosine_schedule_with_warmup(
-        optimizer, warmup_step, totals)
+    scheduler = WarmupCosineSchedule(optimizer, warmup_step, totals)
     all_labels = torch.zeros([len(train_unlabeled_set), 10])
     # optionally resume from a checkpoint
     title = dataset
