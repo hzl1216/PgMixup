@@ -42,9 +42,9 @@ def create_parser():
     parser.add_argument('--alpha', default=0.75, type=float)
     parser.add_argument('--mixup', default=True, type=str2bool,
                         help='use mixup', metavar='BOOL')
-    parser.add_argument('--gpu', default='0', type=str,
+    parser.add_argument('--gpu', default='0', type=int,
                 help='id(s) for CUDA_VISIBLE_DEVICES')
-    parser.add_argument('--seed', type=int, default=21, help='manual seed')
+    parser.add_argument('--seed', type=int, default=2019, help='manual seed')
     parser.add_argument('--scheduler', default='linear')
     parser.add_argument('--optimizer', type=str, default='Adam')
     parser.add_argument('--mixup-size', type=int, default=5)

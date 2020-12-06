@@ -51,7 +51,6 @@ def main(dataset):
     optimizer = optim.SGD(grouped_parameters, lr=args.lr,
                           momentum=0.9, nesterov=True)
 
-    cudnn.benchmark = True
     totals = args.epochs*args.epoch_iteration
     warmup_step = args.warmup_step*args.epoch_iteration
     scheduler = WarmupCosineSchedule(optimizer, warmup_step, totals)
@@ -69,7 +68,7 @@ def main(dataset):
         scheduler.load_state_dict(checkpoint['scheduler'])
         print("Evaluating the  model:")
 
-        test_loss, test_acc = validate(test_loader, ema_model.ema, criterion)
+        test_loss, test_acc = test(test_loader, ema_model.ema, criterion)
         print("=> loaded checkpoint '{}' (epoch {})".format(args.resume, checkpoint['epoch']))
 
         logger = Logger(os.path.join(args.out_path, '%s_log_%d.txt'%(dataset,args.n_labeled)), title=title, resume=True)
@@ -89,12 +88,12 @@ def main(dataset):
         if args.evaluation_epochs and (epoch + 1) % args.evaluation_epochs == 0:
             start_time = time.time()
             print("Evaluating the  model:")
-            test_loss, test_acc = validate(test_loader, model, criterion)
+            test_loss, test_acc = test(test_loader, model, criterion)
             print("--- validation in %s seconds ---" % (time.time() - start_time))
             logger.append([epoch, class_loss, cons_loss, test_loss, test_acc])
 
             print("Evaluating the EMA model:")
-            ema_test_loss, ema_test_acc = validate(test_loader, ema_model.ema, criterion)
+            ema_test_loss, ema_test_acc = test(test_loader, ema_model.ema, criterion)
             print("--- validation in %s seconds ---" % (time.time() - start_time))
             logger.append([epoch, class_loss, cons_loss,ema_test_loss, ema_test_acc])
 
@@ -109,17 +108,22 @@ def main(dataset):
                 'scheduler': scheduler.state_dict(),
             }, 'checkpoint_path', epoch + 1)
 
+
+def setup_seed(seed):
+    random.seed(args.seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    np.random.seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
 if __name__ == '__main__':
     dirs = [ 'result', 'data', 'checkpoint_path']
     for path in dirs:
         if os.path.exists(path) is False:
             os.makedirs(path) 
     args = create_parser()
-    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
-    random.seed(args.seed)
-    np.random.seed(args.seed)
-    torch.manual_seed(args.seed)
-    torch.cuda.manual_seed_all(args.seed)
     set_args(args)
+    setup_seed(args.seed)
     main(args.dataset)
 
