@@ -114,15 +114,14 @@ def setup_seed(seed):
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
     np.random.seed(seed)
-    torch.backends.cudnn.deterministic = True
-    torch.backends.cudnn.benchmark = False
 
 if __name__ == '__main__':
     dirs = [ 'result', 'data', 'checkpoint_path']
     for path in dirs:
         if os.path.exists(path) is False:
-            os.makedirs(path) 
+            os.makedirs(path)
     args = create_parser()
+    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
     set_args(args)
     setup_seed(args.seed)
     main(args.dataset)
