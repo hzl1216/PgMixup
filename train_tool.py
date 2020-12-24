@@ -7,7 +7,7 @@ from utils import *
 import math
 from torch.optim.lr_scheduler import LambdaLR
 import torch.nn.functional as F
-
+from torch import nn
 LOG = logging.getLogger('main')
 args = None
 
@@ -17,7 +17,7 @@ def set_args(input_args):
     args = input_args
 
 
-def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model, optimizer, all_labels,epoch, scheduler=None):
+def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model, optimizer, all_labels, multi_layer, epoch, scheduler=None):
     labeled_train_iter = iter(train_labeled_loader)
     unlabeled_train_iter = iter(train_unlabeled_loader)
 
@@ -47,23 +47,22 @@ def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model, o
 
         batch_size = inputs_x.size(0)
         targets_x = torch.zeros(batch_size, 10).scatter_(1, targets_x.view(-1, 1), 1).cuda(non_blocking=True)
-
-        targets_u = torch.FloatTensor(all_labels[unlabel_index, :]).cuda(non_blocking=True)
-        targets_u = targets_u.detach()
-
+        targets_u = torch.FloatTensor(all_labels[unlabel_index, :]).cuda()
         if args.mixup:
-            mixup_size = get_mixup_size(epoch + i / args.epoch_iteration)
-            inputs_x = torch.cat([inputs_x, inputs_std[:mixup_size]], dim=0)
-            targets_x = torch.cat([targets_x, targets_u[:mixup_size]], dim=0)
-            mixup_size += args.batch_size
+            mixup_size = get_mixup_size(epoch + i / args.epoch_iteration) + args.batch_size
+            inputs_x = torch.cat([inputs_x, inputs_std], dim=0)[:mixup_size]
+            targets_x = torch.cat([targets_x, targets_u], dim=0)[:mixup_size]
             mix = torch.distributions.Beta(args.alpha, args.alpha).sample([mixup_size, 1, 1, 1]).cuda()
             idx = torch.randperm(mixup_size)
             mixed_inputs = mix * inputs_x + (1.0 - mix) * inputs_x[idx]
             mixed_targets = mix[:, :, 0, 0] * targets_x + (1.0 - mix[:, :, 0, 0]) * targets_x[idx]
+            mixed_inputs = mixed_inputs[:args.batch_size]
+            mixed_targets = mixed_targets[:args.batch_size]
             del inputs_x, targets_x
-            all_inputs = torch.cat([mixed_inputs, inputs_aug, inputs_std])
-
+            all_inputs = interleave(
+                torch.cat([mixed_inputs, inputs_aug, inputs_std]), 2*args.unsup_ratio + 1)
             all_logits = model(all_inputs)
+            all_logits = de_interleave(all_logits, 2*args.unsup_ratio + 1)
             logits_aug, logits_std = all_logits[mixup_size:].chunk(2)
             logits_mixup = all_logits[:mixup_size]
             del all_logits
@@ -77,7 +76,7 @@ def train_semi(train_labeled_loader, train_unlabeled_loader, model, ema_model, o
         optimizer.step()
         ema_model.update(model)
         scheduler.step()
-        model.zero_grad()
+        optimizer.zero_grad()
         # measure elapsed time
         meters.update('batch_time', time.time() - end)
         end = time.time()
@@ -183,9 +182,9 @@ def semiloss(logits_x, targets_x, logits_u, targets_u):
 
 
 def semiloss_mixup(logits_x, targets_x, logits_u, targets_u):
-    class_loss = -torch.mean(torch.sum(F.log_softmax(logits_x, dim=1) * targets_x, dim=1))
+    class_loss = - torch.mean(torch.sum(F.log_softmax(logits_x, dim=1) * targets_x, dim=1))
     consistency_loss = torch.mean(torch.sum(F.softmax(targets_u,1) * (F.log_softmax(targets_u, 1) - F.log_softmax(logits_u, dim=1)), 1))
-    return class_loss + args.consistency_weight * consistency_loss,  class_loss, consistency_loss
+    return class_loss + args.consistency_weight*consistency_loss,  class_loss, consistency_loss
 
 
 def get_u_label(model, loader,all_labels):
@@ -214,5 +213,37 @@ def scheduler(epoch, start=0.0, end=1.0):
     return coeff * (end - start) + start
 
 def get_mixup_size(epoch):
-    size = int(args.mixup_size*args.batch_size*scheduler(epoch)/4) * 4
+    size = int(args.mixup_size*args.batch_size*scheduler(epoch)/4)*4
     return size
+
+
+class MultiLossLayer(nn.Module):
+    def __init__(self, list_length):
+        super(MultiLossLayer, self).__init__()
+        # init_weight = torch.tensor([1.0, 0.2])
+        # self._sigmas_sq = nn.ParameterList([nn.Parameter(init_weight[i]) for i in range(list_length)])
+        self._sigmas_sq = torch.empty(list_length)  # (num_loss,)
+        # uniform init
+        self._sigmas_sq = nn.Parameter(nn.init.uniform_(self._sigmas_sq, a=0.2, b=1.0), requires_grad=True)
+
+    def forward(self, loss0, loss1):
+
+        factor0 = torch.div(1.0, torch.mul(self._sigmas_sq[0], 0.5))
+        loss = torch.add(torch.mul(factor0, loss0), 0.5 * torch.log(self._sigmas_sq[0]))
+        # loss1
+        factor1 = torch.div(1.0, torch.mul(self._sigmas_sq[1], 0.5))
+        loss = torch.add(loss, torch.add(torch.mul(factor1, loss1), 0.5 * torch.log(self._sigmas_sq[1])))
+
+        print(0, self._sigmas_sq[0].data, factor0)
+        print(1, self._sigmas_sq[1].data, factor1)
+        print('loss', loss, loss0, loss1)
+        return loss
+
+def interleave(x, size):
+    s = list(x.shape)
+    return x.reshape([-1, size] + s[1:]).transpose(0, 1).reshape([-1] + s[1:])
+
+
+def de_interleave(x, size):
+    s = list(x.shape)
+    return x.reshape([size, -1] + s[1:]).transpose(0, 1).reshape([-1] + s[1:])

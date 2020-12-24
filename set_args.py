@@ -10,7 +10,7 @@ def create_parser():
                         help='manual epoch number (useful on restarts)')
     parser.add_argument('--batch-size', default=64, type=int,
                         metavar='N', help='labeled-batch size')
-    parser.add_argument('--unsup-ratio', default=5, type=int,
+    parser.add_argument('--unsup-ratio', default=7, type=int,
                         metavar='N', help='The ratio between batch size of unlabeled data and labeled data')
     parser.add_argument('--lr', '--learning-rate', default=0.03, type=float)
     parser.add_argument('--weight-decay', '--wd', default=5e-4, type=float,
@@ -19,7 +19,7 @@ def create_parser():
                         help='ema variable decay rate (default: 0.999)')
     parser.add_argument('--consistency-weight', default=1.0, type=float, metavar='WEIGHT',
                         help='use consistency loss with given weight (default: None)')
-    parser.add_argument('--checkpoint-epochs', default=1, type=int,
+    parser.add_argument('--checkpoint-epochs', default=10, type=int,
                         metavar='EPOCHS', help='checkpoint frequency in epochs, 0 to turn checkpointing off (default: 1)')
     parser.add_argument('--evaluation-epochs', default=1, type=int,
                         metavar='EPOCHS', help='evaluation frequency in epochs, 0 to turn evaluation off (default: 1)')
@@ -33,7 +33,7 @@ def create_parser():
                         help='Number of labeled data')
     parser.add_argument('-e', '--evaluate', type=bool,
                         help='evaluate model on evaluation set')
-    parser.add_argument('--num-workers', type=int, default=12,
+    parser.add_argument('--num-workers', type=int, default=4,
                         help='Number of workers')
     parser.add_argument('--epoch-iteration', type=int, default=1024,
                         help='train step of one epoch')
@@ -44,10 +44,10 @@ def create_parser():
                         help='use mixup', metavar='BOOL')
     parser.add_argument('--gpu', default='0', type=str,
                 help='id(s) for CUDA_VISIBLE_DEVICES')
-    parser.add_argument('--seed', type=int, default=2019, help='manual seed')
+    parser.add_argument('--seed', type=int, default=0, help='manual seed')
     parser.add_argument('--scheduler', default='linear')
     parser.add_argument('--optimizer', type=str, default='Adam')
-    parser.add_argument('--mixup-size', type=int, default=5)
+    parser.add_argument('--mixup-size', type=int, default=7)
     parser.add_argument('--dataset', type=str, default='cifar10')
     parser.add_argument('--autoaugment', type=str2bool, default=True)
     return parser.parse_args()
